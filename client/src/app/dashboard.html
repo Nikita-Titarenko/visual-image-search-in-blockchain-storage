@@ -1,0 +1,322 @@
+<main class="page-shell">
+  <section class="hero-card">
+    <div>
+      <p class="eyebrow">Angular client for Polygon</p>
+      <h1>{{ appTitle() }}</h1>
+      <p class="hero-copy">
+        Connect a browser wallet, point the UI at deployed contract addresses, then walk through image
+        registration, licensing, oracle confirmation, and audit snapshot recording.
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <button type="button" class="primary-button" (click)="connectWallet()">Connect wallet</button>
+      <button type="button" class="secondary-button" (click)="switchToAmoy()">Switch to Amoy</button>
+    </div>
+
+    <div class="hero-metrics">
+      <article>
+        <span>Wallet</span>
+        <strong>{{ shortAccount() }}</strong>
+      </article>
+      <article>
+        <span>Network target</span>
+        <strong>{{ networkLabel() }}</strong>
+      </article>
+      <article>
+        <span>Status</span>
+        <strong>{{ txStatus() }}</strong>
+      </article>
+    </div>
+  </section>
+
+  <section class="panel-grid">
+    <article class="panel">
+      <h2>Contract addresses</h2>
+      <p>These deployed Polygon Amoy contract addresses are loaded from the current project configuration.</p>
+
+      <div class="address-field">
+        <span>ImageRegistry</span>
+        <strong>{{ contractAddresses.imageRegistry }}</strong>
+      </div>
+
+      <div class="address-field">
+        <span>LicensingAndPayment</span>
+        <strong>{{ contractAddresses.licensingAndPayment }}</strong>
+      </div>
+
+      <div class="address-field">
+        <span>ModelAndIndexAudit</span>
+        <strong>{{ contractAddresses.modelAndIndexAudit }}</strong>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Flow guide</h2>
+      <ol class="flow-list">
+        <li>Connect MetaMask and switch to Polygon Amoy.</li>
+        <li>Register a collection if you want to group multiple images.</li>
+        <li>Hash the original file, encrypt it through the oracle service, then register the image on-chain.</li>
+        <li>Configure a license price as the current image owner.</li>
+        <li>Buy the license from a buyer wallet and ask the oracle for an encrypted download token.</li>
+        <li>Record model and index hashes for auditability.</li>
+      </ol>
+    </article>
+  </section>
+
+  <section class="panel form-tabs-panel">
+    <div class="form-tabs" role="tablist" aria-label="Workflow forms">
+      @for (tab of formTabs; track tab.id) {
+        <button
+          type="button"
+          class="tab-button"
+          [class.tab-button-active]="activeFormTab() === tab.id"
+          (click)="setActiveFormTab(tab.id)"
+        >
+          {{ tab.label }}
+        </button>
+      }
+    </div>
+  </section>
+
+  <section class="workspace-grid single-form-grid">
+    @if (activeFormTab() === 'collection') {
+    <article class="panel form-panel">
+      <h2>1. Register collection</h2>
+      <label>
+        <span>Collection name</span>
+        <input [(ngModel)]="collectionName" name="collectionName" placeholder="Caltech originals" />
+      </label>
+      <label>
+        <span>Description</span>
+        <textarea [(ngModel)]="collectionDescription" name="collectionDescription" placeholder="Describe the collection purpose and content"></textarea>
+      </label>
+      <label>
+        <span>Category</span>
+        <input [(ngModel)]="collectionCategory" name="collectionCategory" placeholder="visual-search dataset" />
+      </label>
+      <button type="button" class="primary-button" (click)="registerCollection()">Register collection</button>
+    </article>
+    }
+
+    @if (activeFormTab() === 'image') {
+    <article class="panel form-panel">
+      <h2>2. Register image</h2>
+      <label>
+        <span>Original file</span>
+        <input type="file" (change)="hashSelectedFile($event)" accept="image/*" />
+      </label>
+      <p>The uploaded original is encrypted by default before it is pinned to IPFS.</p>
+      <label>
+        <span>Content hash</span>
+        <input [(ngModel)]="imageHashInput" name="imageHashInput" placeholder="0x... or plain text to hash" />
+      </label>
+      <label>
+        <span>Image name</span>
+        <input [(ngModel)]="imageName" name="imageName" placeholder="Airplane 001" />
+      </label>
+      <label>
+        <span>Description</span>
+        <textarea [(ngModel)]="imageDescription" name="imageDescription" placeholder="Describe the visual asset and its provenance"></textarea>
+      </label>
+      <label>
+        <span>Tags</span>
+        <input [(ngModel)]="imageTags" name="imageTags" placeholder="airplane, transport, caltech101" />
+      </label>
+      <label>
+        <span>Collection ID</span>
+        <input [(ngModel)]="imageCollectionId" name="imageCollectionId" placeholder="0" />
+      </label>
+      <div class="address-field">
+        <span>Encrypted asset URI</span>
+        <strong>{{ encryptedAssetUri() || 'Generated after encrypted upload' }}</strong>
+      </div>
+      <button type="button" class="primary-button" (click)="registerImage()">Upload to Pinata and register image</button>
+    </article>
+    }
+
+    @if (activeFormTab() === 'license') {
+    <article class="panel form-panel">
+      <h2>3. Configure license</h2>
+      <label>
+        <span>Image ID</span>
+        <input [(ngModel)]="licenseImageId" name="licenseImageId" />
+      </label>
+      <label>
+        <span>Price in MATIC</span>
+        <input [(ngModel)]="licensePriceMatic" name="licensePriceMatic" placeholder="0.1" />
+      </label>
+      <label>
+        <span>License name</span>
+        <input [(ngModel)]="licenseName" name="licenseName" placeholder="Commercial HD license" />
+      </label>
+      <label>
+        <span>Description</span>
+        <textarea [(ngModel)]="licenseDescription" name="licenseDescription" placeholder="Short business description of the license"></textarea>
+      </label>
+      <label>
+        <span>Usage terms</span>
+        <textarea [(ngModel)]="licenseUsageTerms" name="licenseUsageTerms" placeholder="Allowed usage, restrictions, territory, duration"></textarea>
+      </label>
+      <label class="checkbox-field">
+        <input type="checkbox" [(ngModel)]="licenseActive" name="licenseActive" />
+        <span>Offer active</span>
+      </label>
+      <button type="button" class="primary-button" (click)="configureLicense()">Configure offer</button>
+    </article>
+    }
+
+    @if (activeFormTab() === 'buy') {
+    <article class="panel form-panel">
+      <h2>4. Buy license</h2>
+      <label>
+        <span>Image ID</span>
+        <input [(ngModel)]="buyImageId" name="buyImageId" />
+      </label>
+      <label>
+        <span>Price in MATIC</span>
+        <input [(ngModel)]="buyPriceMatic" name="buyPriceMatic" placeholder="0.1" />
+      </label>
+      <button type="button" class="primary-button" (click)="buyLicense()">Buy license</button>
+    </article>
+    }
+
+    @if (activeFormTab() === 'oracle') {
+    <article class="panel form-panel">
+      <h2>5. Oracle access</h2>
+      <label>
+        <span>Purchase ID</span>
+        <input [(ngModel)]="oraclePurchaseId" name="oraclePurchaseId" />
+      </label>
+      <div class="address-field">
+        <span>Access token expiry</span>
+        <strong>{{ oracleTokenExpiry() || 'Issued after oracle verification' }}</strong>
+      </div>
+      <button type="button" class="primary-button" (click)="claimEncryptedAccess()">Verify payment and issue access token</button>
+      <button type="button" class="secondary-button" (click)="downloadPurchasedImage()">Download decrypted original</button>
+    </article>
+    }
+
+    @if (activeFormTab() === 'audit') {
+    <article class="panel form-panel">
+      <h2>6. Record audit snapshot</h2>
+      <label>
+        <span>Model version</span>
+        <input [(ngModel)]="auditModelVersion" name="auditModelVersion" placeholder="resnet50-v1" />
+      </label>
+      <label>
+        <span>Model hash</span>
+        <input [(ngModel)]="auditModelHash" name="auditModelHash" placeholder="0x... or plain text" />
+      </label>
+      <label>
+        <span>Index version</span>
+        <input [(ngModel)]="auditIndexVersion" name="auditIndexVersion" placeholder="faiss-index-v3" />
+      </label>
+      <label>
+        <span>Index hash</span>
+        <input [(ngModel)]="auditIndexHash" name="auditIndexHash" placeholder="0x... or plain text" />
+      </label>
+      <label>
+        <span>Summary</span>
+        <input [(ngModel)]="auditSummary" name="auditSummary" placeholder="Model and index audit for October release" />
+      </label>
+      <label>
+        <span>Notes</span>
+        <textarea [(ngModel)]="auditNotes" name="auditNotes" placeholder="Explain dataset version, training assumptions, and audit context"></textarea>
+      </label>
+      <button type="button" class="primary-button" (click)="recordAuditSnapshot()">Record snapshot</button>
+    </article>
+    }
+
+    @if (activeFormTab() === 'search') {
+    <article class="panel form-panel search-panel">
+      <h2>7. Similarity search</h2>
+      <label>
+        <span>Query image</span>
+        <input type="file" (change)="handleSearchFileSelection($event)" accept="image/*" />
+      </label>
+      <label>
+        <span>Search method</span>
+        <select [ngModel]="imageSearchMethod()" (ngModelChange)="imageSearchMethod.set($event)" name="imageSearchMethod">
+          <option value="cnn">CNN embeddings</option>
+          <option value="histogram">Color histogram baseline</option>
+        </select>
+      </label>
+      <div class="address-field">
+        <span>Selected file</span>
+        <strong>{{ searchFileName || 'Choose an image to query the Pinata-backed index' }}</strong>
+      </div>
+      <div class="address-field">
+        <span>Query hash</span>
+        <strong>{{ imageSearchQueryHash() || 'Generated after search' }}</strong>
+      </div>
+      <button type="button" class="primary-button" (click)="searchSimilarImages()">Find 10 similar images</button>
+
+      <div class="search-results">
+        @if (imageSearchResults().length === 0) {
+        <p>No search results yet.</p>
+        }
+        @for (result of imageSearchResults(); track result.rank) {
+        <article class="search-result-card">
+          <img [src]="result.gatewayUrl" [alt]="result.fileName" />
+          <div class="search-result-copy">
+            <strong>#{{ result.rank }} {{ result.fileName }}</strong>
+            <span>Class: {{ result.className }}</span>
+            <span>Score: {{ result.score.toFixed(4) }}</span>
+            <span>Distance: {{ result.distance.toFixed(4) }}</span>
+            <a [href]="result.gatewayUrl" target="_blank" rel="noreferrer">Open from Pinata gateway</a>
+          </div>
+        </article>
+        }
+      </div>
+    </article>
+    }
+  </section>
+
+  <section class="workspace-grid">
+    <article class="panel">
+      <h2>Inspect registry</h2>
+      <label>
+        <span>Image ID</span>
+        <input [(ngModel)]="inspectImageId" name="inspectImageId" />
+      </label>
+      <label>
+        <span>Candidate hash</span>
+        <input [(ngModel)]="inspectCandidateHash" name="inspectCandidateHash" placeholder="0x... or plain text" />
+      </label>
+      <button type="button" class="secondary-button" (click)="inspectImage()">Load image details</button>
+    </article>
+
+    <article class="panel">
+      <h2>Inspect purchase</h2>
+      <label>
+        <span>Purchase ID</span>
+        <input [(ngModel)]="inspectPurchaseId" name="inspectPurchaseId" />
+      </label>
+      <button type="button" class="secondary-button" (click)="inspectPurchase()">Load purchase</button>
+    </article>
+
+    <article class="panel">
+      <h2>Inspect audit snapshot</h2>
+      <label>
+        <span>Snapshot ID</span>
+        <input [(ngModel)]="inspectSnapshotId" name="inspectSnapshotId" />
+      </label>
+      <button type="button" class="secondary-button" (click)="inspectSnapshot()">Load snapshot</button>
+    </article>
+
+    <article class="panel log-panel">
+      <h2>Inspector output</h2>
+      <pre>{{ inspectorOutput() || 'No inspection result yet.' }}</pre>
+    </article>
+  </section>
+
+  <section class="panel activity-panel">
+    <h2>Recent activity</h2>
+    <ul>
+      @for (entry of activityLog(); track entry) {
+        <li>{{ entry }}</li>
+      }
+    </ul>
+  </section>
+</main>

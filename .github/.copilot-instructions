@@ -1,0 +1,7 @@
+# Project rules
+
+- Every class must live in its own file.
+- Keep files focused on a single responsibility.
+- Do not place multiple model classes in one module.
+- When adding a new class, create a corresponding file for it and import it explicitly where needed.
+- намагйтесь при виправленні реюзати код замість додавання нвого коду

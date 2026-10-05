@@ -1,0 +1,8 @@
+smart-contracts/node_modules/
+smart-contracts/artifacts/
+smart-contracts/cache/
+.env
+oracle/state.json
+oracle/.venv/
+image-vector-service/state/
+image-vector-service/.venv/

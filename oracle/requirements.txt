@@ -1,0 +1,8 @@
+fastapi==0.115.5
+uvicorn==0.32.0
+python-multipart==0.0.17
+httpx==0.27.2
+python-dotenv==1.0.1
+cryptography==43.0.3
+web3==7.3.0
+eth-account==0.13.4
