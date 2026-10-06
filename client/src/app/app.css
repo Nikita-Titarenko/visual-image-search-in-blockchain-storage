@@ -91,6 +91,10 @@ pre {
 	gap: 12px;
 }
 
+.admin-actions {
+	margin-top: 18px;
+}
+
 .hero-metrics,
 .panel-grid,
 .workspace-grid {
@@ -147,6 +151,10 @@ label span {
 	word-break: break-all;
 }
 
+.status-field strong {
+	word-break: normal;
+}
+
 .panel-grid,
 .workspace-grid {
 	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -188,6 +196,42 @@ label span {
 
 .form-panel {
 	max-width: 760px;
+}
+
+.inline-activity-panel {
+	display: grid;
+	gap: 6px;
+	max-width: 760px;
+	padding: 18px 22px;
+	border-width: 1px;
+}
+
+.inline-activity-label {
+	font-size: 0.78rem;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+.inline-activity-panel strong {
+	font-size: 1rem;
+	line-height: 1.5;
+}
+
+.inline-activity-processing {
+	background: rgba(242, 184, 128, 0.2);
+	border-color: rgba(173, 102, 24, 0.22);
+}
+
+.inline-activity-success {
+	background: rgba(13, 124, 102, 0.12);
+	border-color: rgba(13, 124, 102, 0.24);
+}
+
+.inline-activity-error {
+	background: rgba(176, 43, 43, 0.12);
+	border-color: rgba(176, 43, 43, 0.24);
 }
 
 .search-panel {

@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Code coverage report for contracts\LicensingAndPayment.sol</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+<body>
+<div class='wrapper'>
+  <div class='pad1'>
+    <h1>
+      <a href="../index.html">all files</a> / <a href="index.html">contracts/</a> LicensingAndPayment.sol
+    </h1>
+    <div class='clearfix'>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">100% </span>
+        <span class="quiet">Statements</span>
+        <span class='fraction'>30/30</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">91.67% </span>
+        <span class="quiet">Branches</span>
+        <span class='fraction'>44/48</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">100% </span>
+        <span class="quiet">Functions</span>
+        <span class='fraction'>12/12</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">96.43% </span>
+        <span class="quiet">Lines</span>
+        <span class='fraction'>54/56</span>
+      </div>
+    </div>
+  </div>
+  <div class='status-line high'></div>
+<pre><table class="coverage">
+<tr><td class="line-count quiet">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">18×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">17×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">16×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">16×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">11×</span>
+<span class="cline-any cline-yes">11×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">11×</span>
+<span class="cline-any cline-yes">11×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">11×</span>
+<span class="cline-any cline-yes">11×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">11×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7×</span>
+<span class="cline-any cline-yes">7×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5×</span>
+<span class="cline-any cline-yes">5×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+&nbsp;
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+&nbsp;
+import "./interfaces/IImageRegistry.sol";
+&nbsp;
+contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
+    error RegistryAddressIsZero();
+    error OracleAddressIsZero();
+    error CallerIsNotOracle(address caller);
+    error ImageNotRegistered(uint256 imageId);
+    error CallerIsNotImageOwner(uint256 imageId, address caller);
+    error LicenseOfferNotActive(uint256 imageId);
+    error IncorrectPaymentAmount(uint256 expected, uint256 actual);
+    error OfferSellerIsOutdated(uint256 imageId, address expectedSeller, address actualSeller);
+    error PurchaseDoesNotExist(uint256 purchaseId);
+    error AccessAlreadyConfirmed(uint256 purchaseId);
+    error NoFundsAvailable(address account);
+    error WithdrawalFailed(address payee, uint256 amount);
+&nbsp;
+    struct LicenseOffer {
+        uint256 imageId;
+        address seller;
+        uint256 priceWei;
+        string termsURI;
+        bool active;
+    }
+&nbsp;
+    struct LicensePurchase {
+        uint256 id;
+        uint256 imageId;
+        address buyer;
+        address seller;
+        uint256 paidAmount;
+        bytes32 accessProof;
+        uint64 purchasedAt;
+        bool oracleConfirmed;
+    }
+&nbsp;
+    IImageRegistry public immutable imageRegistry;
+    address public oracle;
+    uint256 private _nextPurchaseId = 1;
+&nbsp;
+    mapping(uint256 =&gt; LicenseOffer) private _offersByImage;
+    mapping(uint256 =&gt; LicensePurchase) private _purchasesById;
+    mapping(uint256 =&gt; mapping(address =&gt; bool)) private _hasLicenseForImage;
+    mapping(address =&gt; uint256) public pendingWithdrawals;
+&nbsp;
+    event OracleUpdated(address indexed previousOracle, address indexed newOracle);
+    event LicenseOfferConfigured(uint256 indexed imageId, address indexed seller, uint256 priceWei, string termsURI, bool active);
+    event LicensePurchased(uint256 indexed purchaseId, uint256 indexed imageId, address indexed buyer, address seller, uint256 paidAmount);
+    event DownloadAccessConfirmed(uint256 indexed purchaseId, address indexed oracle, bytes32 accessProof);
+    event Withdrawal(address indexed payee, uint256 amount);
+&nbsp;
+    /// @notice Creates the licensing contract and binds it to an image registry.
+    /// @param registryAddress The image registry contract used for ownership checks.
+    /// @param initialOwner The address that receives the Ownable administrator role.
+    /// @param initialOracle The oracle address allowed to confirm download access.
+    constructor(address registryAddress, address initialOwner, address initialOracle) Ownable(initialOwner) {
+        if (registryAddress == address(0)) {
+            revert RegistryAddressIsZero();
+        }
+        if (initialOracle == address(0)) {
+            revert OracleAddressIsZero();
+        }
+&nbsp;
+        imageRegistry = IImageRegistry(registryAddress);
+        oracle = initialOracle;
+    }
+&nbsp;
+    modifier onlyOracle() {
+        if (msg.sender != oracle) {
+            revert CallerIsNotOracle(msg.sender);
+        }
+        _;
+    }
+&nbsp;
+    /// @notice Updates the oracle account that can confirm download access.
+    /// @param newOracle The new oracle address.
+    function setOracle(address newOracle) external onlyOwner {
+        if (newOracle == address(0)) {
+            revert OracleAddressIsZero();
+        }
+&nbsp;
+        address previousOracle = oracle;
+        oracle = newOracle;
+        emit OracleUpdated(previousOracle, newOracle);
+    }
+&nbsp;
+    /// @notice Pauses user-facing licensing operations.
+    function pause() external onlyOwner {
+        _pause();
+    }
+&nbsp;
+    /// @notice Resumes user-facing licensing operations.
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+&nbsp;
+    /// @notice Creates or updates a license offer for a registered image.
+    /// @param imageId The registered image identifier.
+    /// @param priceWei The price to purchase a license, denominated in wei.
+    /// @param termsURI The URI pointing to the license terms.
+    /// @param active Whether the license offer should be purchasable.
+    function configureLicenseOffer(
+        uint256 imageId,
+        uint256 priceWei,
+        string calldata termsURI,
+        bool active
+    ) external whenNotPaused {
+        if (!imageRegistry.imageExists(imageId)) {
+            revert ImageNotRegistered(imageId);
+        }
+        if (imageRegistry.ownerOfImage(imageId) != msg.sender) {
+            revert CallerIsNotImageOwner(imageId, msg.sender);
+        }
+&nbsp;
+        _offersByImage[imageId] = LicenseOffer({
+            imageId: imageId,
+            seller: msg.sender,
+            priceWei: priceWei,
+            termsURI: termsURI,
+            active: active
+        });
+&nbsp;
+        emit LicenseOfferConfigured(imageId, msg.sender, priceWei, termsURI, active);
+    }
+&nbsp;
+    /// @notice Purchases a license for an image using the active offer terms.
+    /// @param imageId The registered image identifier.
+    /// @return purchaseId The newly assigned purchase identifier.
+    function buyLicense(uint256 imageId) external payable whenNotPaused <span class="missing-if-branch" title="else path not taken" >E</span>nonReentrant returns (uint256 purchaseId) {
+        LicenseOffer storage offer = _offersByImage[imageId];
+&nbsp;
+        if (!offer.active) {
+            revert LicenseOfferNotActive(imageId);
+        }
+        if (msg.value != offer.priceWei) {
+            revert IncorrectPaymentAmount(offer.priceWei, msg.value);
+        }
+&nbsp;
+        address currentOwner = imageRegistry.ownerOfImage(imageId);
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (offer.seller != currentOwner) {
+            revert OfferSellerIsOutdated(imageId, currentOwner, offer.seller);
+        }
+&nbsp;
+        purchaseId = _nextPurchaseId++;
+        _purchasesById[purchaseId] = LicensePurchase({
+            id: purchaseId,
+            imageId: imageId,
+            buyer: msg.sender,
+            seller: offer.seller,
+            paidAmount: msg.value,
+            accessProof: bytes32(0),
+            purchasedAt: uint64(block.timestamp),
+            oracleConfirmed: false
+        });
+&nbsp;
+        _hasLicenseForImage[imageId][msg.sender] = true;
+        pendingWithdrawals[offer.seller] += msg.value;
+&nbsp;
+        emit LicensePurchased(purchaseId, imageId, msg.sender, offer.seller, msg.value);
+    }
+&nbsp;
+    /// @notice Stores oracle confirmation that a purchased file can be downloaded.
+    /// @param purchaseId The purchase identifier to confirm.
+    /// @param accessProof A proof or ticket hash associated with the download authorization.
+    function confirmDownloadAccess(uint256 purchaseId, bytes32 accessProof) external onlyOracle whenNotPaused {
+        LicensePurchase storage purchase = _purchasesById[purchaseId];
+        if (purchase.id == 0) {
+            revert PurchaseDoesNotExist(purchaseId);
+        }
+        if (purchase.oracleConfirmed) {
+            revert AccessAlreadyConfirmed(purchaseId);
+        }
+&nbsp;
+        purchase.oracleConfirmed = true;
+        purchase.accessProof = accessProof;
+&nbsp;
+        emit DownloadAccessConfirmed(purchaseId, msg.sender, accessProof);
+    }
+&nbsp;
+    /// @notice Withdraws pending license revenue for the caller.
+    function withdrawPayments() external whenNotPaused <span class="missing-if-branch" title="else path not taken" >E</span>nonReentrant {
+        uint256 amount = pendingWithdrawals[msg.sender];
+        if (amount == 0) {
+            revert NoFundsAvailable(msg.sender);
+        }
+&nbsp;
+        pendingWithdrawals[msg.sender] = 0;
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (!success) {
+            revert WithdrawalFailed(msg.sender, amount);
+        }
+&nbsp;
+        emit Withdrawal(msg.sender, amount);
+    }
+&nbsp;
+    /// @notice Returns the current license offer for a given image.
+    /// @param imageId The registered image identifier.
+    /// @return offer The stored license offer.
+    function getLicenseOffer(uint256 imageId) external view returns (LicenseOffer memory) {
+        return _offersByImage[imageId];
+    }
+&nbsp;
+    /// @notice Returns the details of a recorded license purchase.
+    /// @param purchaseId The purchase identifier to query.
+    /// @return purchase The stored purchase record.
+    function getPurchase(uint256 purchaseId) external view returns (LicensePurchase memory) {
+        if (_purchasesById[purchaseId].id == 0) {
+            revert PurchaseDoesNotExist(purchaseId);
+        }
+        return _purchasesById[purchaseId];
+    }
+&nbsp;
+    /// @notice Returns whether a buyer already owns a license for an image.
+    /// @param imageId The registered image identifier.
+    /// @param buyer The buyer address to query.
+    /// @return hasLicense True when the buyer has purchased a license.
+    function hasPurchasedLicense(uint256 imageId, address buyer) external view returns (bool) {
+        return _hasLicenseForImage[imageId][buyer];
+    }
+}</pre></td></tr>
+</table></pre>
+<div class='push'></div><!-- for sticky footer -->
+</div><!-- /wrapper -->
+<div class='footer quiet pad2 space-top1 center small'>
+  Code coverage
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Tue Oct 06 2026 14:02:26 GMT+0300 (Eastern European Summer Time)
+</div>
+</div>
+<script src="../prettify.js"></script>
+<script>
+window.onload = function () {
+        if (typeof prettyPrint === 'function') {
+            prettyPrint();
+        }
+};
+</script>
+<script src="../sorter.js"></script>
+</body>
+</html>

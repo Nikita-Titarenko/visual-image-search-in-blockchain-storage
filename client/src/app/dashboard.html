@@ -59,7 +59,7 @@
         <li>Hash the original file, encrypt it through the oracle service, then register the image on-chain.</li>
         <li>Configure a license price as the current image owner.</li>
         <li>Buy the license from a buyer wallet and ask the oracle for an encrypted download token.</li>
-        <li>Record model and index hashes for auditability.</li>
+        <li>Let the image-vector-service record model and index hashes for auditability.</li>
       </ol>
     </article>
   </section>
@@ -80,6 +80,18 @@
   </section>
 
   <section class="workspace-grid single-form-grid">
+    @if (lastActivity(); as activity) {
+    <article
+      class="panel inline-activity-panel"
+      [class.inline-activity-processing]="activity.state === 'processing'"
+      [class.inline-activity-success]="activity.state === 'success'"
+      [class.inline-activity-error]="activity.state === 'error'"
+    >
+      <span class="inline-activity-label">Last activity</span>
+      <strong>{{ activity.message }}</strong>
+    </article>
+    }
+
     @if (activeFormTab() === 'collection') {
     <article class="panel form-panel">
       <h2>1. Register collection</h2>
@@ -197,40 +209,9 @@
     </article>
     }
 
-    @if (activeFormTab() === 'audit') {
-    <article class="panel form-panel">
-      <h2>6. Record audit snapshot</h2>
-      <label>
-        <span>Model version</span>
-        <input [(ngModel)]="auditModelVersion" name="auditModelVersion" placeholder="resnet50-v1" />
-      </label>
-      <label>
-        <span>Model hash</span>
-        <input [(ngModel)]="auditModelHash" name="auditModelHash" placeholder="0x... or plain text" />
-      </label>
-      <label>
-        <span>Index version</span>
-        <input [(ngModel)]="auditIndexVersion" name="auditIndexVersion" placeholder="faiss-index-v3" />
-      </label>
-      <label>
-        <span>Index hash</span>
-        <input [(ngModel)]="auditIndexHash" name="auditIndexHash" placeholder="0x... or plain text" />
-      </label>
-      <label>
-        <span>Summary</span>
-        <input [(ngModel)]="auditSummary" name="auditSummary" placeholder="Model and index audit for October release" />
-      </label>
-      <label>
-        <span>Notes</span>
-        <textarea [(ngModel)]="auditNotes" name="auditNotes" placeholder="Explain dataset version, training assumptions, and audit context"></textarea>
-      </label>
-      <button type="button" class="primary-button" (click)="recordAuditSnapshot()">Record snapshot</button>
-    </article>
-    }
-
     @if (activeFormTab() === 'search') {
     <article class="panel form-panel search-panel">
-      <h2>7. Similarity search</h2>
+      <h2>6. Similarity search</h2>
       <label>
         <span>Query image</span>
         <input type="file" (change)="handleSearchFileSelection($event)" accept="image/*" />
@@ -244,7 +225,7 @@
       </label>
       <div class="address-field">
         <span>Selected file</span>
-        <strong>{{ searchFileName || 'Choose an image to query the Pinata-backed index' }}</strong>
+        <strong>{{ searchFileName || 'Choose an image to query the author preview index from Pinata' }}</strong>
       </div>
       <div class="address-field">
         <span>Query hash</span>
@@ -261,19 +242,83 @@
           <img [src]="result.gatewayUrl" [alt]="result.fileName" />
           <div class="search-result-copy">
             <strong>#{{ result.rank }} {{ result.fileName }}</strong>
+            <span>Image ID: {{ result.imageId }}</span>
             <span>Class: {{ result.className }}</span>
             <span>Score: {{ result.score.toFixed(4) }}</span>
             <span>Distance: {{ result.distance.toFixed(4) }}</span>
-            <a [href]="result.gatewayUrl" target="_blank" rel="noreferrer">Open from Pinata gateway</a>
+            <a [href]="result.gatewayUrl" target="_blank" rel="noreferrer">Open compressed preview</a>
           </div>
         </article>
         }
       </div>
     </article>
     }
+
+    @if (activeFormTab() === 'set-oracle') {
+    <article class="panel form-panel">
+      <h2>7. Set oracle</h2>
+      <label>
+        <span>New oracle address</span>
+        <input [(ngModel)]="licensingOracleAddress" name="licensingOracleAddress" placeholder="0x..." />
+      </label>
+      <p>Update the oracle address on LicensingAndPayment from the contract owner wallet.</p>
+      <button type="button" class="primary-button" (click)="updateLicensingOracle()">Set oracle</button>
+    </article>
+    }
+
+    @if (activeFormTab() === 'pause-licensing') {
+    <article class="panel form-panel">
+      <h2>8. Pause licensing</h2>
+      <div class="address-field status-field">
+        <span>Current contract status</span>
+        <strong>{{ licensingPaused() === null ? 'Unknown' : (licensingPaused() ? 'Paused' : 'Active') }}</strong>
+      </div>
+      <p>Only the contract owner can pause or unpause LicensingAndPayment. Administrative functions like setOracle remain available while paused.</p>
+      <div class="hero-actions admin-actions">
+        <button type="button" class="secondary-button" (click)="loadLicensingPauseStatus()">Refresh status</button>
+        <button type="button" class="primary-button" (click)="pauseLicensing()">Pause contract</button>
+        <button type="button" class="secondary-button" (click)="unpauseLicensing()">Unpause contract</button>
+      </div>
+    </article>
+    }
+
+    @if (activeFormTab() === 'withdraw-payments') {
+    <article class="panel form-panel">
+      <h2>9. Withdraw payments</h2>
+      <p>Withdraw accrued seller payments from the connected seller wallet.</p>
+      <button type="button" class="secondary-button" (click)="withdrawSellerPayments()">Withdraw payments</button>
+    </article>
+    }
+  </section>
+
+  <section class="panel form-tabs-panel">
+    <div class="form-tabs" role="tablist" aria-label="Inspector forms">
+      @for (tab of inspectTabs; track tab.id) {
+        <button
+          type="button"
+          class="tab-button"
+          [class.tab-button-active]="activeInspectTab() === tab.id"
+          (click)="setActiveInspectTab(tab.id)"
+        >
+          {{ tab.label }}
+        </button>
+      }
+    </div>
   </section>
 
   <section class="workspace-grid">
+    @if (activeInspectTab() === 'collection') {
+    <article class="panel">
+      <h2>Inspect collection</h2>
+      <label>
+        <span>Collection ID</span>
+        <input [(ngModel)]="inspectCollectionId" name="inspectCollectionId" />
+      </label>
+      <button type="button" class="secondary-button" (click)="inspectCollection()">Load collection with images</button>
+    </article>
+    }
+
+    @if (activeInspectTab() === 'image') {
     <article class="panel">
       <h2>Inspect registry</h2>
       <label>
@@ -286,7 +331,9 @@
       </label>
       <button type="button" class="secondary-button" (click)="inspectImage()">Load image details</button>
     </article>
+    }
 
+    @if (activeInspectTab() === 'purchase') {
     <article class="panel">
       <h2>Inspect purchase</h2>
       <label>
@@ -295,7 +342,9 @@
       </label>
       <button type="button" class="secondary-button" (click)="inspectPurchase()">Load purchase</button>
     </article>
+    }
 
+    @if (activeInspectTab() === 'snapshot') {
     <article class="panel">
       <h2>Inspect audit snapshot</h2>
       <label>
@@ -304,6 +353,7 @@
       </label>
       <button type="button" class="secondary-button" (click)="inspectSnapshot()">Load snapshot</button>
     </article>
+    }
 
     <article class="panel log-panel">
       <h2>Inspector output</h2>

@@ -1,0 +1,49 @@
+Позначення:
+кек = private
+чебурек = public або external
+
+ImageRegistry
+
+кек _nextImageId: uint256
+кек _nextCollectionId: uint256
+кек _images: mapping(uint256 => ImageAsset)
+кек _collections: mapping(uint256 => Collection)
+кек _collectionImages: mapping(uint256 => uint256[])
+кек _imageIdByHash: mapping(bytes32 => uint256)
+чебурек constructor(address initialOwner): constructor
+чебурек registerCollection(string calldata name, string calldata metadataURI): uint256
+чебурек registerImage(bytes32 contentHash, string calldata metadataURI, uint256 collectionId): uint256
+чебурек verifyImageHash(uint256 imageId, bytes32 candidateHash): bool
+чебурек imageExists(uint256 imageId): bool
+чебурек ownerOfImage(uint256 imageId): address
+чебурек getImage(uint256 imageId): ImageAsset memory
+чебурек getCollectionWithImages(uint256 collectionId): Collection memory, ImageAsset[] memory
+кек _registerImage(address creator, bytes32 contentHash, string calldata metadataURI, uint256 collectionId): uint256
+
+LicensingAndPayment
+
+чебурек imageRegistry: IImageRegistry
+чебурек oracle: address
+кек _nextPurchaseId: uint256
+кек _offersByImage: mapping(uint256 => LicenseOffer)
+кек _purchasesById: mapping(uint256 => LicensePurchase)
+кек _hasLicenseForImage: mapping(uint256 => mapping(address => bool))
+чебурек pendingWithdrawals: mapping(address => uint256)
+чебурек constructor(address registryAddress, address initialOwner, address initialOracle): constructor
+чебурек setOracle(address newOracle): void
+чебурек configureLicenseOffer(uint256 imageId, uint256 priceWei, string calldata termsURI, bool active): void
+чебурек buyLicense(uint256 imageId): uint256
+чебурек confirmDownloadAccess(uint256 purchaseId, bytes32 accessProof): void
+чебурек withdrawPayments(): void
+чебурек getLicenseOffer(uint256 imageId): LicenseOffer memory
+чебурек getPurchase(uint256 purchaseId): LicensePurchase memory
+чебурек hasPurchasedLicense(uint256 imageId, address buyer): bool
+
+ModelAndIndexAudit
+
+кек _nextSnapshotId: uint256
+кек _snapshots: mapping(uint256 => AuditSnapshot)
+чебурек constructor(address initialOwner): constructor
+чебурек recordSnapshot(string calldata modelVersion, bytes32 modelHash, string calldata indexVersion, bytes32 indexHash, string calldata metadataURI): uint256
+чебурек getSnapshot(uint256 snapshotId): AuditSnapshot memory
+чебурек verifySnapshot(uint256 snapshotId, bytes32 expectedModelHash, bytes32 expectedIndexHash): bool

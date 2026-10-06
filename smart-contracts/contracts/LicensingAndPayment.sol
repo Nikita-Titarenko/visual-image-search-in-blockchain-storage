@@ -2,11 +2,12 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./interfaces/IImageRegistry.sol";
 
-contract LicensingAndPayment is Ownable, ReentrancyGuard {
+contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
     error RegistryAddressIsZero();
     error OracleAddressIsZero();
     error CallerIsNotOracle(address caller);
@@ -89,6 +90,16 @@ contract LicensingAndPayment is Ownable, ReentrancyGuard {
         emit OracleUpdated(previousOracle, newOracle);
     }
 
+    /// @notice Pauses user-facing licensing operations.
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @notice Resumes user-facing licensing operations.
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
     /// @notice Creates or updates a license offer for a registered image.
     /// @param imageId The registered image identifier.
     /// @param priceWei The price to purchase a license, denominated in wei.
@@ -99,7 +110,7 @@ contract LicensingAndPayment is Ownable, ReentrancyGuard {
         uint256 priceWei,
         string calldata termsURI,
         bool active
-    ) external {
+    ) external whenNotPaused {
         if (!imageRegistry.imageExists(imageId)) {
             revert ImageNotRegistered(imageId);
         }
@@ -121,7 +132,7 @@ contract LicensingAndPayment is Ownable, ReentrancyGuard {
     /// @notice Purchases a license for an image using the active offer terms.
     /// @param imageId The registered image identifier.
     /// @return purchaseId The newly assigned purchase identifier.
-    function buyLicense(uint256 imageId) external payable nonReentrant returns (uint256 purchaseId) {
+    function buyLicense(uint256 imageId) external payable whenNotPaused nonReentrant returns (uint256 purchaseId) {
         LicenseOffer storage offer = _offersByImage[imageId];
 
         if (!offer.active) {
@@ -157,7 +168,7 @@ contract LicensingAndPayment is Ownable, ReentrancyGuard {
     /// @notice Stores oracle confirmation that a purchased file can be downloaded.
     /// @param purchaseId The purchase identifier to confirm.
     /// @param accessProof A proof or ticket hash associated with the download authorization.
-    function confirmDownloadAccess(uint256 purchaseId, bytes32 accessProof) external onlyOracle {
+    function confirmDownloadAccess(uint256 purchaseId, bytes32 accessProof) external onlyOracle whenNotPaused {
         LicensePurchase storage purchase = _purchasesById[purchaseId];
         if (purchase.id == 0) {
             revert PurchaseDoesNotExist(purchaseId);
@@ -173,7 +184,7 @@ contract LicensingAndPayment is Ownable, ReentrancyGuard {
     }
 
     /// @notice Withdraws pending license revenue for the caller.
-    function withdrawPayments() external nonReentrant {
+    function withdrawPayments() external whenNotPaused nonReentrant {
         uint256 amount = pendingWithdrawals[msg.sender];
         if (amount == 0) {
             revert NoFundsAvailable(msg.sender);

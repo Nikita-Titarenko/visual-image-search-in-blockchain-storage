@@ -22,8 +22,16 @@ export class App {
     { id: 'license', label: '3. License' },
     { id: 'buy', label: '4. Purchase' },
     { id: 'oracle', label: '5. Oracle' },
-    { id: 'audit', label: '6. Audit' },
-    { id: 'search', label: '7. Search' },
+    { id: 'search', label: '6. Search' },
+    { id: 'set-oracle', label: '7. Set Oracle' },
+    { id: 'pause-licensing', label: '8. Pause Licensing' },
+    { id: 'withdraw-payments', label: '9. Withdraw Payments' },
+  ] as const;
+  protected readonly inspectTabs = [
+    { id: 'collection', label: 'Inspect Collection' },
+    { id: 'image', label: 'Inspect Image' },
+    { id: 'purchase', label: 'Inspect Purchase' },
+    { id: 'snapshot', label: 'Inspect Snapshot' },
   ] as const;
   protected readonly walletService = inject(WalletService);
   private readonly dappService = inject(DappService);
@@ -34,12 +42,12 @@ export class App {
   protected readonly appTitle = signal('Polygon Image Rights Console');
   protected readonly networkLabel = signal(`${POLYGON_AMOY_CONFIG.chainName} (${POLYGON_AMOY_CONFIG.chainId})`);
   protected readonly txStatus = signal('Connect a wallet to start the on-chain flow.');
+  protected readonly lastActivity = signal<{ state: 'processing' | 'success' | 'error'; message: string } | null>(null);
   protected readonly activityLog = signal<string[]>([]);
   protected readonly inspectorOutput = signal('');
   protected readonly collectionPinataUri = signal('');
   protected readonly imagePinataUri = signal('');
   protected readonly licensePinataUri = signal('');
-  protected readonly auditPinataUri = signal('');
   protected readonly encryptedAssetUri = signal('');
   protected readonly oracleAccessToken = signal('');
   protected readonly oracleDownloadUrl = signal('');
@@ -47,7 +55,9 @@ export class App {
   protected readonly imageSearchResults = signal<ImageSearchResult[]>([]);
   protected readonly imageSearchMethod = signal<'cnn' | 'histogram'>('cnn');
   protected readonly imageSearchQueryHash = signal('');
+  protected readonly licensingPaused = signal<boolean | null>(null);
   protected readonly activeFormTab = signal<(typeof this.formTabs)[number]['id']>('collection');
+  protected readonly activeInspectTab = signal<(typeof this.inspectTabs)[number]['id']>('collection');
 
   protected contractAddresses = { ...DEFAULT_CONTRACT_ADDRESSES };
 
@@ -73,16 +83,11 @@ export class App {
   protected buyPriceMatic = '';
 
   protected oraclePurchaseId = '';
-
-  protected auditModelVersion = '';
-  protected auditModelHash = '';
-  protected auditIndexVersion = '';
-  protected auditIndexHash = '';
-  protected auditSummary = '';
-  protected auditNotes = '';
   protected selectedSearchFile: File | null = null;
   protected searchFileName = '';
+  protected licensingOracleAddress = '';
 
+  protected inspectCollectionId = '';
   protected inspectImageId = '';
   protected inspectCandidateHash = '';
   protected inspectPurchaseId = '';
@@ -99,6 +104,10 @@ export class App {
 
   protected setActiveFormTab(tabId: (typeof this.formTabs)[number]['id']): void {
     this.activeFormTab.set(tabId);
+  }
+
+  protected setActiveInspectTab(tabId: (typeof this.inspectTabs)[number]['id']): void {
+    this.activeInspectTab.set(tabId);
   }
 
   protected async connectWallet(): Promise<void> {
@@ -144,6 +153,7 @@ export class App {
       this.pushLog(`Pinned collection metadata to Pinata: ${metadataUpload.ipfsUri}`);
 
       const result = await this.dappService.registerCollection(this.contractAddresses, this.collectionName, metadataUpload.ipfsUri);
+      this.inspectCollectionId = result.collectionId;
       return `Collection ID ${result.collectionId} tx ${result.transactionHash}`;
     });
   }
@@ -158,6 +168,10 @@ export class App {
       this.encryptedAssetUri.set(assetUpload.ipfsUri);
       this.pushLog(`Encrypted and uploaded ${this.selectedImageFile.name} to IPFS: ${assetUpload.ipfsUri}`);
 
+      const compressedPreview = await this.buildCompressedPreviewFile(this.selectedImageFile);
+      const previewUpload = await this.pinataUploadService.uploadImage(compressedPreview);
+      this.pushLog(`Compressed preview uploaded to Pinata: ${previewUpload.ipfsUri}`);
+
       const metadataUpload = await this.pinataUploadService.uploadJson(`${this.imageName || this.selectedImageFile.name}-metadata`, {
         name: this.imageName,
         description: this.imageDescription,
@@ -167,7 +181,10 @@ export class App {
           .filter(Boolean),
         collectionId: this.imageCollectionId,
         assetUri: assetUpload.ipfsUri,
-        gatewayUrl: assetUpload.gatewayUrl,
+        encryptedGatewayUrl: assetUpload.gatewayUrl,
+        previewUri: previewUpload.ipfsUri,
+        previewGatewayUrl: previewUpload.gatewayUrl,
+        previewFileName: compressedPreview.name,
         assetEncrypted: true,
         encryption: {
           algorithm: 'AES-256-GCM',
@@ -193,6 +210,55 @@ export class App {
       this.inspectImageId = result.imageId;
       return `Image ID ${result.imageId} tx ${result.transactionHash}`;
     });
+  }
+
+  private async buildCompressedPreviewFile(file: File): Promise<File> {
+    const objectUrl = URL.createObjectURL(file);
+
+    try {
+      const imageElement = await this.loadImageElement(objectUrl);
+      const maxDimension = 512;
+      const scale = Math.min(1, maxDimension / Math.max(imageElement.width, imageElement.height));
+      const width = Math.max(1, Math.round(imageElement.width * scale));
+      const height = Math.max(1, Math.round(imageElement.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const context = canvas.getContext('2d');
+      if (!context) {
+        throw new Error('Unable to prepare compressed preview canvas.');
+      }
+
+      context.drawImage(imageElement, 0, 0, width, height);
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((value) => {
+          if (value) {
+            resolve(value);
+            return;
+          }
+          reject(new Error('Unable to generate compressed preview image.'));
+        }, 'image/jpeg', 0.78);
+      });
+
+      return new File([blob], `${this.getFileStem(file.name)}-preview.jpg`, { type: 'image/jpeg' });
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+
+  private loadImageElement(objectUrl: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const imageElement = new Image();
+      imageElement.onload = () => resolve(imageElement);
+      imageElement.onerror = () => reject(new Error('Unable to read the selected image file.'));
+      imageElement.src = objectUrl;
+    });
+  }
+
+  private getFileStem(fileName: string): string {
+    const dotIndex = fileName.lastIndexOf('.');
+    return dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName;
   }
 
   protected async configureLicense(): Promise<void> {
@@ -280,34 +346,6 @@ export class App {
     });
   }
 
-  protected async recordAuditSnapshot(): Promise<void> {
-    await this.runAction('Audit snapshot recorded', async () => {
-      const metadataUpload = await this.pinataUploadService.uploadJson(`${this.auditModelVersion || 'audit'}-snapshot`, {
-        summary: this.auditSummary,
-        notes: this.auditNotes,
-        modelVersion: this.auditModelVersion,
-        modelHash: this.auditModelHash,
-        indexVersion: this.auditIndexVersion,
-        indexHash: this.auditIndexHash,
-        recordedAt: new Date().toISOString(),
-      });
-
-      this.auditPinataUri.set(metadataUpload.ipfsUri);
-      this.pushLog(`Pinned audit metadata to Pinata: ${metadataUpload.ipfsUri}`);
-
-      const result = await this.dappService.recordAuditSnapshot(
-        this.contractAddresses,
-        this.auditModelVersion,
-        this.auditModelHash,
-        this.auditIndexVersion,
-        this.auditIndexHash,
-        metadataUpload.ipfsUri,
-      );
-      this.inspectSnapshotId = result.snapshotId;
-      return `Snapshot ID ${result.snapshotId} tx ${result.transactionHash}`;
-    });
-  }
-
   protected handleSearchFileSelection(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
@@ -335,6 +373,44 @@ export class App {
     });
   }
 
+  protected async updateLicensingOracle(): Promise<void> {
+    await this.runAction('Oracle address updated', async () => {
+      const transactionHash = await this.dappService.setOracle(this.contractAddresses, this.licensingOracleAddress);
+      return `Oracle updated to ${this.licensingOracleAddress} tx ${transactionHash}`;
+    });
+  }
+
+  protected async loadLicensingPauseStatus(): Promise<void> {
+    await this.runAction('Licensing pause status loaded', async () => {
+      const isPaused = await this.dappService.getLicensingPauseStatus(this.contractAddresses);
+      this.licensingPaused.set(isPaused);
+      return `LicensingAndPayment is currently ${isPaused ? 'paused' : 'active'}`;
+    });
+  }
+
+  protected async pauseLicensing(): Promise<void> {
+    await this.runAction('Licensing paused', async () => {
+      const transactionHash = await this.dappService.pauseLicensing(this.contractAddresses);
+      this.licensingPaused.set(true);
+      return `LicensingAndPayment paused tx ${transactionHash}`;
+    });
+  }
+
+  protected async unpauseLicensing(): Promise<void> {
+    await this.runAction('Licensing unpaused', async () => {
+      const transactionHash = await this.dappService.unpauseLicensing(this.contractAddresses);
+      this.licensingPaused.set(false);
+      return `LicensingAndPayment unpaused tx ${transactionHash}`;
+    });
+  }
+
+  protected async withdrawSellerPayments(): Promise<void> {
+    await this.runAction('Payments withdrawn', async () => {
+      const transactionHash = await this.dappService.withdrawPayments(this.contractAddresses);
+      return `Withdraw completed tx ${transactionHash}`;
+    });
+  }
+
   protected async inspectImage(): Promise<void> {
     await this.runAction('Image inspected', async () => {
       const payload = await this.dappService.getImageDetails(
@@ -342,42 +418,52 @@ export class App {
         this.inspectImageId,
         this.inspectCandidateHash,
       );
-      this.inspectorOutput.set(JSON.stringify(payload, null, 2));
+      this.inspectorOutput.set(this.stringifyInspectorOutput(payload));
       return `Loaded image ${this.inspectImageId}`;
+    });
+  }
+
+  protected async inspectCollection(): Promise<void> {
+    await this.runAction('Collection inspected', async () => {
+      const payload = await this.dappService.getCollectionDetails(this.contractAddresses, this.inspectCollectionId);
+      this.inspectorOutput.set(this.stringifyInspectorOutput(payload));
+      return `Loaded collection ${this.inspectCollectionId}`;
     });
   }
 
   protected async inspectPurchase(): Promise<void> {
     await this.runAction('Purchase inspected', async () => {
       const payload = await this.dappService.getPurchaseDetails(this.contractAddresses, this.inspectPurchaseId);
-      this.inspectorOutput.set(JSON.stringify(payload, null, 2));
+      this.inspectorOutput.set(this.stringifyInspectorOutput(payload));
       return `Loaded purchase ${this.inspectPurchaseId}`;
     });
   }
 
   protected async inspectSnapshot(): Promise<void> {
     await this.runAction('Snapshot inspected', async () => {
-      const payload = await this.dappService.getSnapshotDetails(
-        this.contractAddresses,
-        this.inspectSnapshotId,
-        this.auditModelHash,
-        this.auditIndexHash,
-      );
-      this.inspectorOutput.set(JSON.stringify(payload, null, 2));
+      const payload = await this.dappService.getSnapshotDetails(this.contractAddresses, this.inspectSnapshotId, '', '');
+      this.inspectorOutput.set(this.stringifyInspectorOutput(payload));
       return `Loaded snapshot ${this.inspectSnapshotId}`;
     });
   }
 
+  private stringifyInspectorOutput(value: unknown): string {
+    return JSON.stringify(value, (_key, candidate) => typeof candidate === 'bigint' ? candidate.toString() : candidate, 2);
+  }
+
   private async runAction(successPrefix: string, action: () => Promise<string>): Promise<void> {
     this.txStatus.set('Waiting for wallet confirmation...');
+    this.lastActivity.set({ state: 'processing', message: 'Waiting for wallet confirmation...' });
 
     try {
       const message = await action();
       this.txStatus.set(message);
+      this.lastActivity.set({ state: 'success', message });
       this.pushLog(`${successPrefix}: ${message}`);
     } catch (error) {
       const message = this.dappService.formatError(error);
       this.txStatus.set(message);
+      this.lastActivity.set({ state: 'error', message });
       this.pushLog(`Error: ${message}`);
     }
   }

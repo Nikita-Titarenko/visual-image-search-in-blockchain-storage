@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 
 export interface ImageSearchResult {
+  imageId: number;
   rank: number;
   score: number;
   distance: number;

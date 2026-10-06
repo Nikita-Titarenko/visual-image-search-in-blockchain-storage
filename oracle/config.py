@@ -8,10 +8,11 @@ from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 ORACLE_DIR = Path(__file__).resolve().parent
+SMART_CONTRACTS_DIR = ROOT_DIR / "smart-contracts"
 
 load_dotenv(ROOT_DIR / ".env")
 
-ARTIFACTS_DIR = ROOT_DIR / "artifacts" / "contracts"
+ARTIFACTS_DIR = SMART_CONTRACTS_DIR / "artifacts" / "contracts"
 STORE_PATH = ORACLE_DIR / "state.json"
 DEFAULT_GATEWAY = os.getenv("PINATA_GATEWAY_BASE_URL", "https://gateway.pinata.cloud/ipfs")
 ACCESS_TTL_MINUTES = int(os.getenv("ORACLE_ACCESS_TOKEN_TTL_MINUTES", "30"))

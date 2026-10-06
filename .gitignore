@@ -6,3 +6,7 @@ oracle/state.json
 oracle/.venv/
 image-vector-service/state/
 image-vector-service/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/

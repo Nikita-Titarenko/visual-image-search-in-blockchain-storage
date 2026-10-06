@@ -73,6 +73,8 @@ python -m venv image-vector-service/.venv
 image-vector-service/.venv/Scripts/python.exe -m pip install -r image-vector-service/requirements.txt
 ```
 
+The current `image-vector-service` dependency set is intended for Python 3.14.
+
 On Windows PowerShell, use `npm.cmd` and `npx.cmd` if `npm` or `npx` are blocked by execution policy.
 
 ## Compile Contracts
@@ -172,10 +174,10 @@ This script downloads the Caltech-101 dataset through `kagglehub` and generates 
 
 ## Run Tests
 
-Run Hardhat tests:
+Run Hardhat tests with Solidity coverage:
 
 ```bash
-npm --prefix smart-contracts test
+npm --prefix smart-contracts run test:coverage
 ```
 
 Run Angular tests:

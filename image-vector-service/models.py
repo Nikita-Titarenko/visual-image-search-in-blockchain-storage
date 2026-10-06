@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -12,10 +11,11 @@ IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
 
 @dataclass
 class DatasetImageRecord:
-    dataset_path: Path
+    image_id: int
     relative_path: str
     class_name: str
     file_name: str
+    metadata_uri: str
     ipfs_hash: str
     ipfs_uri: str
     gateway_url: str
@@ -24,10 +24,11 @@ class DatasetImageRecord:
 
     def to_json(self) -> dict[str, Any]:
         return {
-            "datasetPath": str(self.dataset_path),
+            "imageId": self.image_id,
             "relativePath": self.relative_path,
             "className": self.class_name,
             "fileName": self.file_name,
+            "metadataUri": self.metadata_uri,
             "ipfsHash": self.ipfs_hash,
             "ipfsUri": self.ipfs_uri,
             "gatewayUrl": self.gateway_url,
@@ -38,10 +39,11 @@ class DatasetImageRecord:
     @classmethod
     def from_json(cls, payload: dict[str, Any]) -> "DatasetImageRecord":
         return cls(
-            dataset_path=Path(payload["datasetPath"]),
+            image_id=int(payload["imageId"]),
             relative_path=payload["relativePath"],
             class_name=payload["className"],
             file_name=payload["fileName"],
+            metadata_uri=payload.get("metadataUri", ""),
             ipfs_hash=payload["ipfsHash"],
             ipfs_uri=payload["ipfsUri"],
             gateway_url=payload["gatewayUrl"],
@@ -51,6 +53,7 @@ class DatasetImageRecord:
 
 
 class SearchResult(BaseModel):
+    imageId: int
     rank: int
     score: float
     distance: float

@@ -5,12 +5,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ImageRegistry is Ownable {
     error EmptyContentHash();
-    error InvalidNewOwner();
-    error InputLengthMismatch();
     error ImageNotRegistered(uint256 imageId);
     error CollectionNotRegistered(uint256 collectionId);
     error ImageHashAlreadyRegistered(bytes32 contentHash);
-    error CallerIsNotCurrentOwner(uint256 imageId, address caller);
     error OnlyCollectionCreatorCanAddImages(uint256 collectionId, address caller);
 
     struct ImageAsset {
@@ -49,7 +46,6 @@ contract ImageRegistry is Ownable {
         bytes32 contentHash,
         string metadataURI
     );
-    event ImageOwnershipTransferred(uint256 indexed imageId, address indexed previousOwner, address indexed newOwner);
 
     /// @notice Creates the image registry contract.
     /// @param initialOwner The address that receives the Ownable administrator role.
@@ -85,48 +81,6 @@ contract ImageRegistry is Ownable {
         uint256 collectionId
     ) external returns (uint256 imageId) {
         imageId = _registerImage(msg.sender, contentHash, metadataURI, collectionId);
-    }
-
-    /// @notice Registers multiple images for the caller in a single transaction.
-    /// @param contentHashes The hashes of the original image files.
-    /// @param metadataURIs The metadata URIs describing the images.
-    /// @param collectionId The optional parent collection identifier, or zero for no collection.
-    /// @return imageIds The list of newly assigned image identifiers.
-    function registerImageBatch(
-        bytes32[] calldata contentHashes,
-        string[] calldata metadataURIs,
-        uint256 collectionId
-    ) external returns (uint256[] memory imageIds) {
-        if (contentHashes.length != metadataURIs.length) {
-            revert InputLengthMismatch();
-        }
-
-        imageIds = new uint256[](contentHashes.length);
-        for (uint256 index = 0; index < contentHashes.length; index++) {
-            imageIds[index] = _registerImage(msg.sender, contentHashes[index], metadataURIs[index], collectionId);
-        }
-    }
-
-    /// @notice Transfers ownership of a registered image to a new wallet.
-    /// @param imageId The registered image identifier.
-    /// @param newOwner The address of the new image owner.
-    function transferImageOwnership(uint256 imageId, address newOwner) external {
-        if (newOwner == address(0)) {
-            revert InvalidNewOwner();
-        }
-
-        ImageAsset storage asset = _images[imageId];
-        if (!asset.exists) {
-            revert ImageNotRegistered(imageId);
-        }
-        if (asset.currentOwner != msg.sender) {
-            revert CallerIsNotCurrentOwner(imageId, msg.sender);
-        }
-
-        address previousOwner = asset.currentOwner;
-        asset.currentOwner = newOwner;
-
-        emit ImageOwnershipTransferred(imageId, previousOwner, newOwner);
     }
 
     /// @notice Verifies whether a candidate hash matches the stored original hash.
@@ -169,31 +123,33 @@ contract ImageRegistry is Ownable {
         return _images[imageId];
     }
 
-    /// @notice Returns the full record of a registered collection.
+    /// @notice Returns all registered images in id order.
+    /// @return images The full image records stored in the registry.
+    function getAllImages() external view returns (ImageAsset[] memory images) {
+        uint256 totalImages = _nextImageId - 1;
+        images = new ImageAsset[](totalImages);
+        for (uint256 imageId = 1; imageId <= totalImages; imageId++) {
+            images[imageId - 1] = _images[imageId];
+        }
+    }
+
+    /// @notice Returns a collection together with all registered images inside it.
     /// @param collectionId The collection identifier to query.
     /// @return collection The stored collection data.
-    function getCollection(uint256 collectionId) external view returns (Collection memory) {
-        if (!_collections[collectionId].exists) {
+    /// @return images The full image records assigned to the collection.
+    function getCollectionWithImages(
+        uint256 collectionId
+    ) external view returns (Collection memory collection, ImageAsset[] memory images) {
+        collection = _collections[collectionId];
+        if (!collection.exists) {
             revert CollectionNotRegistered(collectionId);
         }
-        return _collections[collectionId];
-    }
 
-    /// @notice Returns the image identifiers assigned to a collection.
-    /// @param collectionId The collection identifier to query.
-    /// @return imageIds The list of image identifiers inside the collection.
-    function getCollectionImageIds(uint256 collectionId) external view returns (uint256[] memory) {
-        if (!_collections[collectionId].exists) {
-            revert CollectionNotRegistered(collectionId);
+        uint256[] storage imageIds = _collectionImages[collectionId];
+        images = new ImageAsset[](imageIds.length);
+        for (uint256 index = 0; index < imageIds.length; index++) {
+            images[index] = _images[imageIds[index]];
         }
-        return _collectionImages[collectionId];
-    }
-
-    /// @notice Returns the registered image identifier for a given content hash.
-    /// @param contentHash The original file hash to look up.
-    /// @return imageId The registered image identifier, or zero if it is not registered.
-    function imageIdByHash(bytes32 contentHash) external view returns (uint256) {
-        return _imageIdByHash[contentHash];
     }
 
     function _registerImage(
