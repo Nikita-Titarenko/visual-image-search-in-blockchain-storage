@@ -1,6 +1,8 @@
 smart-contracts/node_modules/
 smart-contracts/artifacts/
 smart-contracts/cache/
+smart-contracts/coverage/
+smart-contracts/coverage.json
 .env
 oracle/state.json
 oracle/.venv/

@@ -8,10 +8,11 @@ const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 
 function runCommand(command, args, description) {
   console.log(`\n==> ${description}`);
+  const useShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(command);
   const result = spawnSync(command, args, {
     cwd: projectDir,
     stdio: "inherit",
-    shell: false
+    shell: useShell
   });
 
   if (result.status !== 0) {
