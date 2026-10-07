@@ -17,7 +17,7 @@ describe("ImageRegistry", function () {
 
   it("sets the deployer-provided owner", async function () {
     const { registry, owner } = await loadFixture(deployFixture);
-    expect(await registry.owner()).to.equal(owner.address);
+    expect(await registry.owner()).to.equal(owner.address); 
   });
 
   it("registers a collection, emits an event, and stores the timestamp", async function () {
