@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 interface IImageRegistry {
-    struct ImageAsset {
+    struct ImageAssetView {
         uint256 id;
         uint256 collectionId;
         address creator;
@@ -10,7 +10,6 @@ interface IImageRegistry {
         bytes32 contentHash;
         string metadataURI;
         uint64 registeredAt;
-        bool exists;
     }
 
     /// @notice Returns whether an image identifier has been registered.
@@ -26,9 +25,9 @@ interface IImageRegistry {
     /// @notice Returns the full record of a registered image.
     /// @param imageId The image identifier to query.
     /// @return asset The stored image asset data.
-    function getImage(uint256 imageId) external view returns (ImageAsset memory asset);
+    function getImage(uint256 imageId) external view returns (ImageAssetView memory asset);
 
     /// @notice Returns all registered images in id order.
     /// @return images The full image records stored in the registry.
-    function getAllImages() external view returns (ImageAsset[] memory images);
+    function getAllImages() external view returns (ImageAssetView[] memory images);
 }

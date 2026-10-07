@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760">
+<style>
+text { font-family: "Segoe UI", Arial, sans-serif; fill: #1f2937; }
+.title { font-size: 28px; font-weight: 700; }
+.subtitle { font-size: 14px; fill: #4b5563; }
+.axis { stroke: #374151; stroke-width: 2; }
+.grid { stroke: #d1d5db; stroke-width: 1; stroke-dasharray: 4 6; }
+.bar { fill: #2563eb; }
+.bar-label { font-size: 13px; font-weight: 600; text-anchor: middle; }
+.x-label { font-size: 12px; }
+.y-label { font-size: 12px; fill: #6b7280; }
+.axis-label { font-size: 16px; font-weight: 600; fill: #374151; }
+</style>
+<rect width="100%" height="100%" fill="#f8fafc" />
+<text x="90" y="40" class="title">Hardhat Gas Report by Method</text>
+<text x="90" y="62" class="subtitle">Average gas from the latest hardhat test run</text>
+<line x1="90" y1="510.00" x2="1360" y2="510.00" class="grid" />
+<text x="78" y="514.00" text-anchor="end" class="y-label">0</text>
+<line x1="90" y1="428.00" x2="1360" y2="428.00" class="grid" />
+<text x="78" y="432.00" text-anchor="end" class="y-label">41,195</text>
+<line x1="90" y1="346.00" x2="1360" y2="346.00" class="grid" />
+<text x="78" y="350.00" text-anchor="end" class="y-label">82,390</text>
+<line x1="90" y1="264.00" x2="1360" y2="264.00" class="grid" />
+<text x="78" y="268.00" text-anchor="end" class="y-label">123,585</text>
+<line x1="90" y1="182.00" x2="1360" y2="182.00" class="grid" />
+<text x="78" y="186.00" text-anchor="end" class="y-label">164,780</text>
+<line x1="90" y1="100.00" x2="1360" y2="100.00" class="grid" />
+<text x="78" y="104.00" text-anchor="end" class="y-label">205,975</text>
+<line x1="90" y1="510" x2="1360" y2="510" class="axis" />
+<line x1="90" y1="100" x2="90" y2="510" class="axis" />
+<text x="725.00" y="732" text-anchor="middle" class="axis-label">Functions</text>
+<text x="28" y="305.00" text-anchor="middle" class="axis-label" transform="rotate(-90 28 305.00)">Average gas used</text>
+<rect x="90" y="100.00" width="109" height="410.00" rx="8" class="bar" />
+<text x="144.50" y="90.00" class="bar-label">205,975</text>
+<g transform="translate(144.50,534) rotate(45)"><text class="x-label">buyLicense</text><text class="x-label" y="18" fill="#6b7280">LicensingAndPayment</text></g>
+<rect x="219" y="138.78" width="109" height="371.22" rx="8" class="bar" />
+<text x="273.50" y="128.78" class="bar-label">186,495</text>
+<g transform="translate(273.50,534) rotate(45)"><text class="x-label">registerImage</text><text class="x-label" y="18" fill="#6b7280">ImageRegistry</text></g>
+<rect x="348" y="168.12" width="109" height="341.88" rx="8" class="bar" />
+<text x="402.50" y="158.12" class="bar-label">171,753</text>
+<g transform="translate(402.50,534) rotate(45)"><text class="x-label">recordSnapshot</text><text class="x-label" y="18" fill="#6b7280">ModelAndIndexAudit</text></g>
+<rect x="477" y="261.66" width="109" height="248.34" rx="8" class="bar" />
+<text x="531.50" y="251.66" class="bar-label">124,759</text>
+<g transform="translate(531.50,534) rotate(45)"><text class="x-label">configureLicenseOffer</text><text class="x-label" y="18" fill="#6b7280">LicensingAndPayment</text></g>
+<rect x="606" y="270.28" width="109" height="239.72" rx="8" class="bar" />
+<text x="660.50" y="260.28" class="bar-label">120,428</text>
+<g transform="translate(660.50,534) rotate(45)"><text class="x-label">registerCollection</text><text class="x-label" y="18" fill="#6b7280">ImageRegistry</text></g>
+<rect x="735" y="395.17" width="109" height="114.83" rx="8" class="bar" />
+<text x="789.50" y="385.17" class="bar-label">57,686</text>
+<g transform="translate(789.50,534) rotate(45)"><text class="x-label">confirmDownloadAccess</text><text class="x-label" y="18" fill="#6b7280">LicensingAndPayment</text></g>
+<rect x="864" y="441.04" width="109" height="68.96" rx="8" class="bar" />
+<text x="918.50" y="431.04" class="bar-label">34,642</text>
+<g transform="translate(918.50,534) rotate(45)"><text class="x-label">withdrawPayments</text><text class="x-label" y="18" fill="#6b7280">LicensingAndPayment</text></g>
+<rect x="993" y="449.18" width="109" height="60.82" rx="8" class="bar" />
+<text x="1047.50" y="439.18" class="bar-label">30,556</text>
+<g transform="translate(1047.50,534) rotate(45)"><text class="x-label">setOracle</text><text class="x-label" y="18" fill="#6b7280">LicensingAndPayment</text></g>
+<rect x="1122" y="454.75" width="109" height="55.25" rx="8" class="bar" />
+<text x="1176.50" y="444.75" class="bar-label">27,758</text>
+<g transform="translate(1176.50,534) rotate(45)"><text class="x-label">pause</text><text class="x-label" y="18" fill="#6b7280">LicensingAndPayment</text></g>
+<rect x="1251" y="454.85" width="109" height="55.15" rx="8" class="bar" />
+<text x="1305.50" y="444.85" class="bar-label">27,708</text>
+<g transform="translate(1305.50,534) rotate(45)"><text class="x-label">unpause</text><text class="x-label" y="18" fill="#6b7280">LicensingAndPayment</text></g>
+</svg>

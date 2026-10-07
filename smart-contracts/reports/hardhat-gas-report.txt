@@ -1,0 +1,110 @@
+
+  Contract integration flows
+    ✔ executes the end-to-end registry, licensing, and audit flow (418ms)
+    ✔ restores buying after pause and unpause (24ms)
+    ✔ tracks timestamps across collection, image, purchase, and snapshot records (18ms)
+    ✔ keeps registry views consistent across collections and all-images listing (16ms)
+    ✔ allows administrative oracle rotation during pause and uses the new oracle afterward (22ms)
+    ✔ records multiple snapshots and verifies each independently (15ms)
+
+  ImageRegistry
+    ✔ sets the deployer-provided owner (16ms)
+    ✔ registers a collection, emits an event, and stores the timestamp (15ms)
+    ✔ increments collection ids across registrations (15ms)
+    ✔ registers an image without a collection (17ms)
+    ✔ adds collection images to the collection listing (12ms)
+    ✔ returns all images in id order (8ms)
+    ✔ returns an empty image list before any registrations (2ms)
+    ✔ verifies a matching image hash (4ms)
+    ✔ returns false for a mismatched image hash (3ms)
+    ✔ reports whether an image exists (5ms)
+    ✔ reverts ownerOfImage for unknown images (2ms)
+    ✔ reverts getImage for unknown images (2ms)
+    ✔ reverts getCollectionWithImages for unknown collections (2ms)
+    ✔ rejects zero content hashes (2ms)
+    ✔ rejects duplicate content hashes (5ms)
+    ✔ rejects images assigned to missing collections (2ms)
+    ✔ rejects collection images from non-creators (4ms)
+
+  LicensingAndPayment
+    ✔ stores the registry address and oracle on deployment (23ms)
+    ✔ rejects zero registry addresses (9ms)
+    ✔ rejects zero oracle addresses (18ms)
+    ✔ allows the owner to update the oracle (10ms)
+    ✔ rejects zero oracle updates (2ms)
+    ✔ restricts setOracle to the owner (3ms)
+    ✔ allows the owner to pause and unpause the contract (17ms)
+    ✔ restricts pause and unpause to the owner (22ms)
+    ✔ keeps setOracle available while paused (8ms)
+    ✔ configures an active license offer and stores it (6ms)
+    ✔ emits LicenseOfferConfigured when configuring an offer (8ms)
+    ✔ blocks configureLicenseOffer while paused (2ms)
+    ✔ rejects offers for missing images (2ms)
+    ✔ rejects offers from non-owners (3ms)
+    ✔ purchases an active license and stores the purchase (14ms)
+    ✔ blocks buyLicense while paused (5ms)
+    ✔ rejects buys when the offer is inactive (4ms)
+    ✔ rejects buys with incorrect payment amounts (4ms)
+    ✔ lets the oracle confirm download access (15ms)
+    ✔ restricts confirmDownloadAccess to the oracle (7ms)
+    ✔ rejects confirmations for missing purchases (1ms)
+    ✔ rejects duplicate confirmations (7ms)
+    ✔ blocks confirmations while paused (7ms)
+    ✔ withdraws seller payments and clears the balance (14ms)
+    ✔ blocks withdrawals while paused (7ms)
+    ✔ rejects withdrawals when no funds are available (4ms)
+    ✔ reverts getPurchase for missing ids (2ms)
+
+  ModelAndIndexAudit
+    ✔ sets the configured owner (12ms)
+    ✔ records a snapshot, emits an event, and stores the timestamp (22ms)
+    ✔ increments snapshot ids (8ms)
+    ✔ restricts recordSnapshot to the owner (5ms)
+    ✔ rejects empty model versions (3ms)
+    ✔ rejects empty index versions (3ms)
+    ✔ rejects empty model hashes (2ms)
+    ✔ rejects empty index hashes (2ms)
+    ✔ reverts getSnapshot for missing ids (2ms)
+    ✔ verifies exact snapshot hashes (4ms)
+    ✔ returns false when the model hash differs (5ms)
+    ✔ returns false when the index hash differs (5ms)
+    ✔ reverts verifySnapshot for missing ids (3ms)
+
+·-------------------------------------------------|---------------------------|-------------|-----------------------------·
+|              [90mSolc version: 0.8.24[39m               ·  [90mOptimizer enabled: true[39m  ·  [90mRuns: 200[39m  ·  [90mBlock limit: 60000000 gas[39m  │
+··················································|···························|·············|······························
+|  [32m[1mMethods[22m[39m                                                                                                                │
+························|·························|·············|·············|·············|···············|··············
+|  [1mContract[22m             ·  [1mMethod[22m                 ·  [32mMin[39m        ·  [32mMax[39m        ·  [32mAvg[39m        ·  [1m# calls[22m      ·  [1musd (avg)[22m  │
+························|·························|·············|·············|·············|···············|··············
+|  [90mImageRegistry[39m        ·  registerCollection     ·     [36m120332[39m  ·     [31m120536[39m  ·     120428  ·           [90m11[39m  ·          [32m[90m-[32m[39m  │
+························|·························|·············|·············|·············|···············|··············
+|  [90mImageRegistry[39m        ·  registerImage          ·     [36m167208[39m  ·     [31m233895[39m  ·     186495  ·           [90m19[39m  ·          [32m[90m-[32m[39m  │
+························|·························|·············|·············|·············|···············|··············
+|  [90mLicensingAndPayment[39m  ·  buyLicense             ·          -  ·          -  ·     205975  ·           [90m14[39m  ·          [32m[90m-[32m[39m  │
+························|·························|·············|·············|·············|···············|··············
+|  [90mLicensingAndPayment[39m  ·  configureLicenseOffer  ·     [36m106020[39m  ·     [31m125932[39m  ·     124759  ·           [90m17[39m  ·          [32m[90m-[32m[39m  │
+························|·························|·············|·············|·············|···············|··············
+|  [90mLicensingAndPayment[39m  ·  confirmDownloadAccess  ·      [36m57675[39m  ·      [31m57687[39m  ·      57686  ·            [90m8[39m  ·          [32m[90m-[32m[39m  │
+························|·························|·············|·············|·············|···············|··············
+|  [90mLicensingAndPayment[39m  ·  pause                  ·          -  ·          -  ·      27758  ·           [90m10[39m  ·          [32m[90m-[32m[39m  │
+························|·························|·············|·············|·············|···············|··············
+|  [90mLicensingAndPayment[39m  ·  setOracle              ·          -  ·          -  ·      30556  ·            [90m4[39m  ·          [32m[90m-[32m[39m  │
+························|·························|·············|·············|·············|···············|··············
+|  [90mLicensingAndPayment[39m  ·  unpause                ·          -  ·          -  ·      27708  ·            [90m4[39m  ·          [32m[90m-[32m[39m  │
+························|·························|·············|·············|·············|···············|··············
+|  [90mLicensingAndPayment[39m  ·  withdrawPayments       ·          -  ·          -  ·      34642  ·            [90m3[39m  ·          [32m[90m-[32m[39m  │
+························|·························|·············|·············|·············|···············|··············
+|  [90mModelAndIndexAudit[39m   ·  recordSnapshot         ·     [36m171620[39m  ·     [31m171848[39m  ·     171753  ·           [90m12[39m  ·          [32m[90m-[32m[39m  │
+························|·························|·············|·············|·············|···············|··············
+|  [32m[1mDeployments[22m[39m                                    ·                                         ·  [1m% of limit[22m   ·             │
+··················································|·············|·············|·············|···············|··············
+|  ImageRegistry                                  ·          -  ·          -  ·    1117705  ·        [90m1.9 %[39m  ·          [32m[90m-[32m[39m  │
+··················································|·············|·············|·············|···············|··············
+|  LicensingAndPayment                            ·          -  ·          -  ·    1279951  ·        [90m2.1 %[39m  ·          [32m[90m-[32m[39m  │
+··················································|·············|·············|·············|···············|··············
+|  ModelAndIndexAudit                             ·          -  ·          -  ·     756668  ·        [90m1.3 %[39m  ·          [32m[90m-[32m[39m  │
+·-------------------------------------------------|-------------|-------------|-------------|---------------|-------------·
+
+  63 passing (959ms)
+

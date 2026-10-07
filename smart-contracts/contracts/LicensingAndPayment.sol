@@ -22,7 +22,6 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
     error WithdrawalFailed(address payee, uint256 amount);
 
     struct LicenseOffer {
-        uint256 imageId;
         address seller;
         uint256 priceWei;
         string termsURI;
@@ -30,6 +29,24 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
     }
 
     struct LicensePurchase {
+        uint256 imageId;
+        address buyer;
+        address seller;
+        uint256 paidAmount;
+        bytes32 accessProof;
+        uint64 purchasedAt;
+        bool oracleConfirmed;
+    }
+
+    struct LicenseOfferView {
+        uint256 imageId;
+        address seller;
+        uint256 priceWei;
+        string termsURI;
+        bool active;
+    }
+
+    struct LicensePurchaseView {
         uint256 id;
         uint256 imageId;
         address buyer;
@@ -119,7 +136,6 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
         }
 
         _offersByImage[imageId] = LicenseOffer({
-            imageId: imageId,
             seller: msg.sender,
             priceWei: priceWei,
             termsURI: termsURI,
@@ -149,7 +165,6 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
 
         purchaseId = _nextPurchaseId++;
         _purchasesById[purchaseId] = LicensePurchase({
-            id: purchaseId,
             imageId: imageId,
             buyer: msg.sender,
             seller: offer.seller,
@@ -170,7 +185,7 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
     /// @param accessProof A proof or ticket hash associated with the download authorization.
     function confirmDownloadAccess(uint256 purchaseId, bytes32 accessProof) external onlyOracle whenNotPaused {
         LicensePurchase storage purchase = _purchasesById[purchaseId];
-        if (purchase.id == 0) {
+        if (purchase.buyer == address(0)) {
             revert PurchaseDoesNotExist(purchaseId);
         }
         if (purchase.oracleConfirmed) {
@@ -202,18 +217,35 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
     /// @notice Returns the current license offer for a given image.
     /// @param imageId The registered image identifier.
     /// @return offer The stored license offer.
-    function getLicenseOffer(uint256 imageId) external view returns (LicenseOffer memory) {
-        return _offersByImage[imageId];
+    function getLicenseOffer(uint256 imageId) external view returns (LicenseOfferView memory offer) {
+        LicenseOffer storage storedOffer = _offersByImage[imageId];
+        return LicenseOfferView({
+            imageId: imageId,
+            seller: storedOffer.seller,
+            priceWei: storedOffer.priceWei,
+            termsURI: storedOffer.termsURI,
+            active: storedOffer.active
+        });
     }
 
     /// @notice Returns the details of a recorded license purchase.
     /// @param purchaseId The purchase identifier to query.
     /// @return purchase The stored purchase record.
-    function getPurchase(uint256 purchaseId) external view returns (LicensePurchase memory) {
-        if (_purchasesById[purchaseId].id == 0) {
+    function getPurchase(uint256 purchaseId) external view returns (LicensePurchaseView memory purchase) {
+        LicensePurchase storage storedPurchase = _purchasesById[purchaseId];
+        if (storedPurchase.buyer == address(0)) {
             revert PurchaseDoesNotExist(purchaseId);
         }
-        return _purchasesById[purchaseId];
+        return LicensePurchaseView({
+            id: purchaseId,
+            imageId: storedPurchase.imageId,
+            buyer: storedPurchase.buyer,
+            seller: storedPurchase.seller,
+            paidAmount: storedPurchase.paidAmount,
+            accessProof: storedPurchase.accessProof,
+            purchasedAt: storedPurchase.purchasedAt,
+            oracleConfirmed: storedPurchase.oracleConfirmed
+        });
     }
 
     /// @notice Returns whether a buyer already owns a license for an image.

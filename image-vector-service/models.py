@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -52,17 +54,27 @@ class DatasetImageRecord:
         )
 
 
+@dataclass
+class TestDatasetImageRecord:
+    relative_path: str
+    file_path: Path
+    media_type: str
+
+
 class SearchResult(BaseModel):
-    imageId: int
+    resultType: Literal["dataset", "registered"]
     rank: int
     score: float
     distance: float
-    className: str
-    fileName: str
-    ipfsUri: str
-    gatewayUrl: str
-    contentHash: str
-    relativePath: str
+    imageBytes: str | None = None
+    imageMediaType: str | None = None
+    imageId: int | None = None
+    className: str | None = None
+    fileName: str | None = None
+    ipfsUri: str | None = None
+    gatewayUrl: str | None = None
+    contentHash: str | None = None
+    relativePath: str | None = None
 
 
 class SearchResponse(BaseModel):

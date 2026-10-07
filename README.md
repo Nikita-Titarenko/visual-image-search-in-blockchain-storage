@@ -180,6 +180,28 @@ Run Hardhat tests with Solidity coverage:
 npm --prefix smart-contracts run test:coverage
 ```
 
+Run the Solidity static analysis:
+
+```bash
+npm --prefix smart-contracts run lint:solidity
+```
+
+Run the full pre-commit quality gate locally:
+
+```bash
+npm --prefix smart-contracts run check:commit
+```
+
+The smart-contracts package installs a tracked Git pre-commit hook through `prepare`. On each commit it runs Solidity static analysis, Hardhat tests, coverage, and then fails the commit if any coverage metric drops below 85%.
+
+Generate a bar chart from the Hardhat gas report:
+
+```bash
+python smart-contracts/scripts/plot_gas_report.py
+```
+
+The script runs `npx.cmd hardhat test`, saves the full console output to `smart-contracts/reports/hardhat-gas-report.txt`, and writes an SVG chart to `smart-contracts/reports/gas-methods-chart.svg`.
+
 Run Angular tests:
 
 ```bash

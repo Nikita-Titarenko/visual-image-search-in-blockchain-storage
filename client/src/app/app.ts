@@ -102,6 +102,14 @@ export class App {
     return `${account.slice(0, 6)}...${account.slice(-4)}`;
   });
 
+  protected imageSearchResultSrc(result: ImageSearchResult): string {
+    if (result.resultType === 'dataset') {
+      return result.imageBytes ? `data:${result.imageMediaType || 'image/jpeg'};base64,${result.imageBytes}` : '';
+    }
+
+    return result.gatewayUrl || '';
+  }
+
   protected setActiveFormTab(tabId: (typeof this.formTabs)[number]['id']): void {
     this.activeFormTab.set(tabId);
   }

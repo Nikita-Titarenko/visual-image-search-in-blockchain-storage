@@ -2,6 +2,7 @@ const path = require("path");
 const { task } = require("hardhat/config");
 
 require("@nomicfoundation/hardhat-toolbox");
+require("hardhat-gas-reporter");
 require("solidity-coverage");
 require("dotenv").config({ path: path.resolve(__dirname, "..", ".env") });
 
@@ -44,5 +45,11 @@ module.exports = {
   },
   etherscan: {
     apiKey: explorerApiKey
+  },
+  gasReporter: {
+    enabled: true,
+    currency: "USD",
+    showTimeSpent: true,
+    excludeContracts: ["mocks/"]
   }
 };

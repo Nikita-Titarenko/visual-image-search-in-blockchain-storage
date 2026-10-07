@@ -239,14 +239,21 @@
         }
         @for (result of imageSearchResults(); track result.rank) {
         <article class="search-result-card">
-          <img [src]="result.gatewayUrl" [alt]="result.fileName" />
+          <img [src]="imageSearchResultSrc(result)" [alt]="result.fileName || ('Dataset result #' + result.rank)" />
           <div class="search-result-copy">
-            <strong>#{{ result.rank }} {{ result.fileName }}</strong>
+            <strong>#{{ result.rank }} {{ result.fileName || 'Test dataset image' }}</strong>
+            @if (result.resultType === 'registered') {
             <span>Image ID: {{ result.imageId }}</span>
             <span>Class: {{ result.className }}</span>
+            }
+            @if (result.resultType === 'dataset') {
+            <span>Source: fixed test dataset</span>
+            }
             <span>Score: {{ result.score.toFixed(4) }}</span>
             <span>Distance: {{ result.distance.toFixed(4) }}</span>
+            @if (result.resultType === 'registered') {
             <a [href]="result.gatewayUrl" target="_blank" rel="noreferrer">Open compressed preview</a>
+            }
           </div>
         </article>
         }

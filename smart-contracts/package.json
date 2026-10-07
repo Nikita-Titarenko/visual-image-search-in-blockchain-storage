@@ -4,9 +4,13 @@
   "private": true,
   "description": "Hardhat project for image registry, licensing, and audit contracts on Polygon.",
   "scripts": {
+    "prepare": "node scripts/install-git-hooks.js",
     "compile": "hardhat compile",
     "test": "hardhat test",
     "test:coverage": "hardhat test --coverage",
+    "lint:solidity": "solhint \"contracts/**/*.sol\"",
+    "check:coverage": "node scripts/check-coverage.js",
+    "check:commit": "node scripts/check-quality.js",
     "clean": "hardhat clean",
     "deploy:amoy": "hardhat run scripts/deploy.js --network amoy",
     "deploy:polygon": "hardhat run scripts/deploy.js --network polygon"
@@ -14,7 +18,9 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "dotenv": "^16.4.5",
-    "hardhat": "^2.26.3"
+    "hardhat-gas-reporter": "^1.0.10",
+    "hardhat": "^2.26.3",
+    "solhint": "^6.2.4"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.1.0"

@@ -28,6 +28,7 @@ AUDIT_SNAPSHOT_IMAGE_INTERVAL = int(os.getenv("AUDIT_SNAPSHOT_IMAGE_INTERVAL", "
 POLYGON_AMOY_WS_URL = os.getenv("POLYGON_AMOY_WS_URL", "").strip()
 VECTOR_MODEL_VERSION = os.getenv("VECTOR_MODEL_VERSION", "resnet18-imagenet1k-v1")
 VECTOR_INDEX_VERSION = os.getenv("VECTOR_INDEX_VERSION", "cnn-and-hist-v1")
+VECTOR_TEST_DATASET_ID = os.getenv("VECTOR_TEST_DATASET_ID", "imbikramsaha/caltech-101")
 
 
 def require_env(name: str) -> str:

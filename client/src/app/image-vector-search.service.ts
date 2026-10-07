@@ -1,16 +1,19 @@
 import { Injectable } from '@angular/core';
 
 export interface ImageSearchResult {
-  imageId: number;
+  resultType: 'dataset' | 'registered';
   rank: number;
   score: number;
   distance: number;
-  className: string;
-  fileName: string;
-  ipfsUri: string;
-  gatewayUrl: string;
-  contentHash: string;
-  relativePath: string;
+  imageBytes?: string;
+  imageMediaType?: string;
+  imageId?: number;
+  className?: string;
+  fileName?: string;
+  ipfsUri?: string;
+  gatewayUrl?: string;
+  contentHash?: string;
+  relativePath?: string;
 }
 
 export interface ImageSearchResponse {

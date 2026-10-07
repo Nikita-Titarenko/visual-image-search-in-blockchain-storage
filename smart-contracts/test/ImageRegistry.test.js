@@ -35,7 +35,6 @@ describe("ImageRegistry", function () {
     expect(collection.name).to.equal("Animals");
     expect(collection.metadataURI).to.equal("ipfs://collection-1");
     expect(collection.createdAt).to.equal(BigInt(nextTimestamp));
-    expect(collection.exists).to.equal(true);
     expect(images).to.have.lengthOf(0);
   });
 
@@ -68,7 +67,6 @@ describe("ImageRegistry", function () {
     expect(image.contentHash).to.equal(contentHash);
     expect(image.metadataURI).to.equal("ipfs://image-1");
     expect(image.registeredAt).to.equal(BigInt(nextTimestamp));
-    expect(image.exists).to.equal(true);
   });
 
   it("adds collection images to the collection listing", async function () {
@@ -91,6 +89,7 @@ describe("ImageRegistry", function () {
 
     const images = await registry.getAllImages();
     expect(images.map((image) => image.id)).to.deep.equal([1n, 2n, 3n]);
+    expect(images.map((image) => image.metadataURI)).to.deep.equal(["ipfs://a", "ipfs://b", "ipfs://c"]);
     expect(images.map((image) => image.creator)).to.deep.equal([creator.address, other.address, creator.address]);
   });
 

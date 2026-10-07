@@ -11,6 +11,16 @@ contract ModelAndIndexAudit is Ownable {
     error SnapshotDoesNotExist(uint256 snapshotId);
 
     struct AuditSnapshot {
+        string modelVersion;
+        bytes32 modelHash;
+        string indexVersion;
+        bytes32 indexHash;
+        string metadataURI;
+        address submittedBy;
+        uint64 recordedAt;
+    }
+
+    struct AuditSnapshotView {
         uint256 id;
         string modelVersion;
         bytes32 modelHash;
@@ -67,7 +77,6 @@ contract ModelAndIndexAudit is Ownable {
 
         snapshotId = _nextSnapshotId++;
         _snapshots[snapshotId] = AuditSnapshot({
-            id: snapshotId,
             modelVersion: modelVersion,
             modelHash: modelHash,
             indexVersion: indexVersion,
@@ -83,11 +92,21 @@ contract ModelAndIndexAudit is Ownable {
     /// @notice Returns a previously recorded audit snapshot.
     /// @param snapshotId The snapshot identifier to query.
     /// @return snapshot The stored audit snapshot.
-    function getSnapshot(uint256 snapshotId) external view returns (AuditSnapshot memory) {
-        if (_snapshots[snapshotId].id == 0) {
+    function getSnapshot(uint256 snapshotId) external view returns (AuditSnapshotView memory snapshot) {
+        AuditSnapshot storage storedSnapshot = _snapshots[snapshotId];
+        if (storedSnapshot.submittedBy == address(0)) {
             revert SnapshotDoesNotExist(snapshotId);
         }
-        return _snapshots[snapshotId];
+        return AuditSnapshotView({
+            id: snapshotId,
+            modelVersion: storedSnapshot.modelVersion,
+            modelHash: storedSnapshot.modelHash,
+            indexVersion: storedSnapshot.indexVersion,
+            indexHash: storedSnapshot.indexHash,
+            metadataURI: storedSnapshot.metadataURI,
+            submittedBy: storedSnapshot.submittedBy,
+            recordedAt: storedSnapshot.recordedAt
+        });
     }
 
     /// @notice Verifies whether the supplied model and index hashes match a stored snapshot.
@@ -101,7 +120,7 @@ contract ModelAndIndexAudit is Ownable {
         bytes32 expectedIndexHash
     ) external view returns (bool) {
         AuditSnapshot storage snapshot = _snapshots[snapshotId];
-        if (snapshot.id == 0) {
+        if (snapshot.submittedBy == address(0)) {
             revert SnapshotDoesNotExist(snapshotId);
         }
         return snapshot.modelHash == expectedModelHash && snapshot.indexHash == expectedIndexHash;

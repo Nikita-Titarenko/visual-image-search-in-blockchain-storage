@@ -297,7 +297,7 @@ def _normalize_registry_asset(asset: object) -> Mapping[str, object]:
     if isinstance(asset, Mapping):
         return asset
     if isinstance(asset, tuple):
-        if len(asset) != 8:
+        if len(asset) != 7:
             raise TypeError(f"Unsupported registry image asset tuple length: {len(asset)}")
         return {
             "id": asset[0],
@@ -307,7 +307,6 @@ def _normalize_registry_asset(asset: object) -> Mapping[str, object]:
             "contentHash": asset[4],
             "metadataURI": asset[5],
             "registeredAt": asset[6],
-            "exists": asset[7],
         }
     raise TypeError(f"Unsupported registry image asset type: {type(asset).__name__}")
 
@@ -334,8 +333,6 @@ async def _sync_registered_images_from_registry(records_by_image_id: dict[int, D
     for asset in registry_images:
         image_id = int(asset["id"])
         if image_id in records_by_image_id:
-            continue
-        if not bool(asset.get("exists", False)):
             continue
 
         record = await _build_record_from_metadata(

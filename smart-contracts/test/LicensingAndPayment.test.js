@@ -160,6 +160,7 @@ describe("LicensingAndPayment", function () {
       .withArgs(1n, 1n, buyer.address, seller.address, priceWei);
 
     const purchase = await licensing.getPurchase(1n);
+  expect(purchase.id).to.equal(1n);
     expect(purchase.imageId).to.equal(1n);
     expect(purchase.buyer).to.equal(buyer.address);
     expect(purchase.seller).to.equal(seller.address);
