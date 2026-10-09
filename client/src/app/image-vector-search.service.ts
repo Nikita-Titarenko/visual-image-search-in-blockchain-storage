@@ -1,19 +1,16 @@
 import { Injectable } from '@angular/core';
 
 export interface ImageSearchResult {
-  resultType: 'dataset' | 'registered';
   rank: number;
   score: number;
   distance: number;
-  imageBytes?: string;
-  imageMediaType?: string;
-  imageId?: number;
-  className?: string;
-  fileName?: string;
-  ipfsUri?: string;
-  gatewayUrl?: string;
-  contentHash?: string;
-  relativePath?: string;
+  imageId: number;
+  className: string;
+  fileName: string;
+  ipfsUri: string;
+  gatewayUrl: string;
+  contentHash: string;
+  relativePath: string;
 }
 
 export interface ImageSearchResponse {
@@ -29,12 +26,12 @@ const VECTOR_SERVICE_BASE_URL = 'http://localhost:8010';
 
 @Injectable({ providedIn: 'root' })
 export class ImageVectorSearchService {
-  async searchSimilarImages(file: File, method: 'cnn' | 'histogram', topK: number): Promise<ImageSearchResponse> {
+  async searchSimilarImages(file: File, topK: number): Promise<ImageSearchResponse> {
     const formData = new FormData();
     formData.append('file', file, file.name);
 
     const response = await fetch(
-      `${VECTOR_SERVICE_BASE_URL}/api/vector/search?method=${encodeURIComponent(method)}&top_k=${encodeURIComponent(topK)}`,
+      `${VECTOR_SERVICE_BASE_URL}/api/vector/search?top_k=${encodeURIComponent(topK)}`,
       {
         method: 'POST',
         body: formData,

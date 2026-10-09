@@ -5,7 +5,6 @@ interface IImageRegistry {
     struct ImageAssetView {
         uint256 id;
         uint256 collectionId;
-        address creator;
         address currentOwner;
         bytes32 contentHash;
         string metadataURI;

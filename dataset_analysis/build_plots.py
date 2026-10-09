@@ -13,7 +13,7 @@ SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp"}
 
 
 def build_dataset_plots(dataset_path: Path, output_dir: Path) -> list[Path]:
-    image_paths = _collect_image_paths(dataset_path)
+    image_paths = collect_image_paths(dataset_path)
     if not image_paths:
         raise ValueError(f"No image files were found in {dataset_path}")
 
@@ -32,7 +32,7 @@ def build_dataset_plots(dataset_path: Path, output_dir: Path) -> list[Path]:
     return generated_files
 
 
-def _collect_image_paths(dataset_path: Path) -> list[Path]:
+def collect_image_paths(dataset_path: Path) -> list[Path]:
     return sorted(
         file_path
         for file_path in dataset_path.rglob("*")

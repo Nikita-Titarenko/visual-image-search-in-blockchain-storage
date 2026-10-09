@@ -11,7 +11,7 @@ describe("Contract integration flows", function () {
     const [owner, seller, buyer, oracle, otherBuyer] = await ethers.getSigners();
 
     const registryFactory = await ethers.getContractFactory("ImageRegistry");
-    const registry = await registryFactory.deploy(owner.address);
+    const registry = await registryFactory.deploy();
     await registry.waitForDeployment();
 
     const licensingFactory = await ethers.getContractFactory("LicensingAndPayment");

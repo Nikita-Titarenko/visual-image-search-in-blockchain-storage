@@ -45,7 +45,7 @@ async function main() {
     console.log("ImageRegistry already configured in .env:", imageRegistryAddress);
   } else {
     const ImageRegistry = await hre.ethers.getContractFactory("ImageRegistry");
-    const imageRegistry = await ImageRegistry.deploy(deployer.address);
+    const imageRegistry = await ImageRegistry.deploy();
     await imageRegistry.waitForDeployment();
     imageRegistryAddress = await imageRegistry.getAddress();
     console.log("ImageRegistry deployed:", imageRegistryAddress);
@@ -77,7 +77,7 @@ async function main() {
 
   await verifyOnExplorer({
     address: imageRegistryAddress,
-    constructorArgs: [deployer.address],
+    constructorArgs: [],
     label: "ImageRegistry",
     contract: "contracts/ImageRegistry.sol:ImageRegistry",
   });

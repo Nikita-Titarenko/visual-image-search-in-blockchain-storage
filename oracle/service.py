@@ -75,8 +75,8 @@ class OracleService:
 
         image_id = int(purchase[1])
         image = self.contracts.registry.functions.getImage(image_id).call()
-        content_hash = Web3.to_hex(image[4]).lower()
-        metadata_uri = image[5]
+        content_hash = Web3.to_hex(image[3]).lower()
+        metadata_uri = image[4]
         metadata = await fetch_json(metadata_uri)
 
         store = ensure_store()
@@ -87,7 +87,7 @@ class OracleService:
         proof_hex = Web3.to_hex(token_hash)
 
         transaction_hash = None
-        if not purchase[7]:
+        if Web3.to_hex(purchase[5]).lower() == Web3.to_hex(bytes(32)).lower():
             transaction_hash = send_confirm_transaction(self.contracts, request.purchaseId, token_hash)
 
         expires_at = utcnow() + timedelta(minutes=ACCESS_TTL_MINUTES)

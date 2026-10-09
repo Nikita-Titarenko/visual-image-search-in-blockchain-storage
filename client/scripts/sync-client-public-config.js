@@ -1,9 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 
-const rootDir = path.resolve(__dirname, "..");
+const clientDir = path.resolve(__dirname, "..");
+const rootDir = path.resolve(clientDir, "..");
 const envPath = path.join(rootDir, ".env");
-const outputPath = path.join(rootDir, "client", "src", "app", "public-env.ts");
+const outputPath = path.join(clientDir, "src", "app", "public-env.ts");
 
 function parseDotEnv(filePath) {
   if (!fs.existsSync(filePath)) {

@@ -35,7 +35,6 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
         uint256 paidAmount;
         bytes32 accessProof;
         uint64 purchasedAt;
-        bool oracleConfirmed;
     }
 
     struct LicenseOfferView {
@@ -54,7 +53,6 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
         uint256 paidAmount;
         bytes32 accessProof;
         uint64 purchasedAt;
-        bool oracleConfirmed;
     }
 
     IImageRegistry public immutable imageRegistry;
@@ -63,6 +61,8 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
 
     mapping(uint256 => LicenseOffer) private _offersByImage;
     mapping(uint256 => LicensePurchase) private _purchasesById;
+    mapping(address => uint256[]) private _purchaseIdsByBuyer;
+    mapping(address => uint256[]) private _purchaseIdsBySeller;
     mapping(uint256 => mapping(address => bool)) private _hasLicenseForImage;
     mapping(address => uint256) public pendingWithdrawals;
 
@@ -170,10 +170,11 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
             seller: offer.seller,
             paidAmount: msg.value,
             accessProof: bytes32(0),
-            purchasedAt: uint64(block.timestamp),
-            oracleConfirmed: false
+            purchasedAt: uint64(block.timestamp)
         });
 
+        _purchaseIdsByBuyer[msg.sender].push(purchaseId);
+        _purchaseIdsBySeller[offer.seller].push(purchaseId);
         _hasLicenseForImage[imageId][msg.sender] = true;
         pendingWithdrawals[offer.seller] += msg.value;
 
@@ -188,11 +189,10 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
         if (purchase.buyer == address(0)) {
             revert PurchaseDoesNotExist(purchaseId);
         }
-        if (purchase.oracleConfirmed) {
+        if (purchase.accessProof != bytes32(0)) {
             revert AccessAlreadyConfirmed(purchaseId);
         }
 
-        purchase.oracleConfirmed = true;
         purchase.accessProof = accessProof;
 
         emit DownloadAccessConfirmed(purchaseId, msg.sender, accessProof);
@@ -236,16 +236,19 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
         if (storedPurchase.buyer == address(0)) {
             revert PurchaseDoesNotExist(purchaseId);
         }
-        return LicensePurchaseView({
-            id: purchaseId,
-            imageId: storedPurchase.imageId,
-            buyer: storedPurchase.buyer,
-            seller: storedPurchase.seller,
-            paidAmount: storedPurchase.paidAmount,
-            accessProof: storedPurchase.accessProof,
-            purchasedAt: storedPurchase.purchasedAt,
-            oracleConfirmed: storedPurchase.oracleConfirmed
-        });
+        return _toPurchaseView(purchaseId, storedPurchase);
+    }
+
+    /// @notice Returns all license purchases made by the caller.
+    /// @return purchases The caller purchase records in creation order.
+    function getMyPurchases() external view returns (LicensePurchaseView[] memory purchases) {
+        return _getPurchaseViews(_purchaseIdsByBuyer[msg.sender]);
+    }
+
+    /// @notice Returns all license sales received by the caller.
+    /// @return sales The caller sales records in creation order.
+    function getMySales() external view returns (LicensePurchaseView[] memory sales) {
+        return _getPurchaseViews(_purchaseIdsBySeller[msg.sender]);
     }
 
     /// @notice Returns whether a buyer already owns a license for an image.
@@ -254,5 +257,30 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
     /// @return hasLicense True when the buyer has purchased a license.
     function hasPurchasedLicense(uint256 imageId, address buyer) external view returns (bool) {
         return _hasLicenseForImage[imageId][buyer];
+    }
+
+    function _getPurchaseViews(
+        uint256[] storage purchaseIds
+    ) private view returns (LicensePurchaseView[] memory purchases) {
+        purchases = new LicensePurchaseView[](purchaseIds.length);
+        for (uint256 index = 0; index < purchaseIds.length; index++) {
+            uint256 purchaseId = purchaseIds[index];
+            purchases[index] = _toPurchaseView(purchaseId, _purchasesById[purchaseId]);
+        }
+    }
+
+    function _toPurchaseView(
+        uint256 purchaseId,
+        LicensePurchase storage purchase
+    ) private view returns (LicensePurchaseView memory) {
+        return LicensePurchaseView({
+            id: purchaseId,
+            imageId: purchase.imageId,
+            buyer: purchase.buyer,
+            seller: purchase.seller,
+            paidAmount: purchase.paidAmount,
+            accessProof: purchase.accessProof,
+            purchasedAt: purchase.purchasedAt
+        });
     }
 }

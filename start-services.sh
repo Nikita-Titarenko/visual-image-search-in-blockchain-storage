@@ -5,6 +5,13 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
+VECTOR_MODE="${1:-production}"
+
+if [[ "$VECTOR_MODE" != "production" && "$VECTOR_MODE" != "development" ]]; then
+  echo "Usage: ./start-services.sh [production|development]"
+  exit 1
+fi
+
 ORACLE_PYTHON_BIN="$ROOT_DIR/oracle/.venv/Scripts/python.exe"
 VECTOR_PYTHON_BIN="$ROOT_DIR/image-vector-service/.venv/Scripts/python.exe"
 
@@ -61,10 +68,11 @@ start_service() {
 
 start_service "Pinata proxy" "$ORACLE_PYTHON_BIN" pinata-proxy/pinata_proxy.py
 start_service "Oracle" "$ORACLE_PYTHON_BIN" -m uvicorn oracle.main:app --host 0.0.0.0 --port 8000
-start_service "Image vector service" "$VECTOR_PYTHON_BIN" -m uvicorn main:app --app-dir image-vector-service --host 0.0.0.0 --port 8010
+start_service "Image vector service" "$VECTOR_PYTHON_BIN" image-vector-service/main.py "$VECTOR_MODE"
 start_service "Angular web client" "${NPM_CMD[@]}" --prefix client start
 
 echo
+echo "Image vector service mode: $VECTOR_MODE"
 echo "All services are starting. Press Ctrl+C to stop them together."
 
 wait

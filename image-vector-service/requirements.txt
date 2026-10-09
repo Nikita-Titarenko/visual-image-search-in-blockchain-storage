@@ -9,3 +9,5 @@ torch==2.14.1
 torchvision==0.29.1
 web3==8.0.0
 kagglehub==0.3.4
+scikit-learn==1.7.2
+matplotlib==3.11.2

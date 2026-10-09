@@ -8,17 +8,12 @@ function hashLabel(label) {
 
 describe("ImageRegistry", function () {
   async function deployFixture() {
-    const [owner, creator, other] = await ethers.getSigners();
+    const [creator, other] = await ethers.getSigners();
     const factory = await ethers.getContractFactory("ImageRegistry");
-    const registry = await factory.deploy(owner.address);
+    const registry = await factory.deploy();
     await registry.waitForDeployment();
-    return { registry, owner, creator, other };
+    return { registry, creator, other };
   }
-
-  it("sets the deployer-provided owner", async function () {
-    const { registry, owner } = await loadFixture(deployFixture);
-    expect(await registry.owner()).to.equal(owner.address); 
-  });
 
   it("registers a collection, emits an event, and stores the timestamp", async function () {
     const { registry, creator } = await loadFixture(deployFixture);
@@ -62,7 +57,6 @@ describe("ImageRegistry", function () {
     const image = await registry.getImage(1n);
     expect(image.id).to.equal(1n);
     expect(image.collectionId).to.equal(0n);
-    expect(image.creator).to.equal(creator.address);
     expect(image.currentOwner).to.equal(creator.address);
     expect(image.contentHash).to.equal(contentHash);
     expect(image.metadataURI).to.equal("ipfs://image-1");
@@ -90,7 +84,7 @@ describe("ImageRegistry", function () {
     const images = await registry.getAllImages();
     expect(images.map((image) => image.id)).to.deep.equal([1n, 2n, 3n]);
     expect(images.map((image) => image.metadataURI)).to.deep.equal(["ipfs://a", "ipfs://b", "ipfs://c"]);
-    expect(images.map((image) => image.creator)).to.deep.equal([creator.address, other.address, creator.address]);
+    expect(images.map((image) => image.currentOwner)).to.deep.equal([creator.address, other.address, creator.address]);
   });
 
   it("returns an empty image list before any registrations", async function () {

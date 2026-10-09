@@ -97,6 +97,18 @@ Deploy to Polygon mainnet:
 npm --prefix smart-contracts run deploy:polygon
 ```
 
+Prepare a demo collection, image, and license offer on Polygon Amoy:
+
+```bash
+npm.cmd --prefix smart-contracts run amoy:create-license-setup
+```
+
+Buy the prepared license on Polygon Amoy:
+
+```bash
+npm.cmd --prefix smart-contracts run amoy:buy-license
+```
+
 Run the deployment script on the local Hardhat network:
 
 ```bash
@@ -120,7 +132,7 @@ python pinata-proxy/pinata_proxy.py
 To start the Pinata proxy, oracle, image vector service, and Angular web client together from the repository root, run:
 
 ```bash
-bash start-services.sh
+.\start-services.sh
 ```
 
 The script expects these interpreters to exist:
@@ -146,6 +158,18 @@ Start the image vector service:
 
 ```bash
 uvicorn main:app --app-dir image-vector-service --host 0.0.0.0 --port 8010
+```
+
+Start the image vector service explicitly in production mode:
+
+```bash
+python image-vector-service/main.py production
+```
+
+Run the image vector service in development mode. In this mode it does not host FastAPI at all. It rebuilds the feature index when needed, runs a deterministic grouped train/validation/test split without data leakage, tunes the baseline histogram kNN, ResNet-18 embedding kNN, and RandomForestClassifier models, writes the evaluation logs plus JSON artifacts into `image-vector-service/state/`, and then exits:
+
+```bash
+python image-vector-service/main.py development
 ```
 
 On first startup, the image vector service downloads the dataset via `dataset_analysis/download_dataset.py`, uploads every dataset image to Pinata, and then builds a local feature index from those Pinata-backed images.

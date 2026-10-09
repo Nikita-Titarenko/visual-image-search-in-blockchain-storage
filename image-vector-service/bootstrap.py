@@ -297,16 +297,15 @@ def _normalize_registry_asset(asset: object) -> Mapping[str, object]:
     if isinstance(asset, Mapping):
         return asset
     if isinstance(asset, tuple):
-        if len(asset) != 7:
+        if len(asset) != 6:
             raise TypeError(f"Unsupported registry image asset tuple length: {len(asset)}")
         return {
             "id": asset[0],
             "collectionId": asset[1],
-            "creator": asset[2],
-            "currentOwner": asset[3],
-            "contentHash": asset[4],
-            "metadataURI": asset[5],
-            "registeredAt": asset[6],
+            "currentOwner": asset[2],
+            "contentHash": asset[3],
+            "metadataURI": asset[4],
+            "registeredAt": asset[5],
         }
     raise TypeError(f"Unsupported registry image asset type: {type(asset).__name__}")
 

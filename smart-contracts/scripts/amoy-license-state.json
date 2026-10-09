@@ -1,0 +1,55 @@
+{
+  "network": "amoy",
+  "pinataProxyBaseUrl": "http://127.0.0.1:3001",
+  "createdAt": "2026-10-08T15:03:39.895Z",
+  "contracts": {
+    "imageRegistryAddress": "0xEB7E73bC98943BfC382035F1D97ff484a8BA2485",
+    "licensingAndPaymentAddress": "0xB08Def87a29D9557522163448CE435684bD95cb6"
+  },
+  "creator": "0x015A7feD749c4bB6a1863321a71dAcCc5C5976C8",
+  "collection": {
+    "id": "2",
+    "name": "Amoy Demo Collection 2026-10-08T15-03-39-892Z",
+    "metadataUri": "ipfs://QmUcANi2TmwJ75EbgCJyC7bX9QNtqKBiGeJLbQHAa6eunT",
+    "metadataGatewayUrl": "https://gateway.pinata.cloud/ipfs/QmUcANi2TmwJ75EbgCJyC7bX9QNtqKBiGeJLbQHAa6eunT",
+    "metadataIpfsHash": "QmUcANi2TmwJ75EbgCJyC7bX9QNtqKBiGeJLbQHAa6eunT",
+    "txHash": "0xcb18d7cdb46cbebfc4c8adc10b9af187bee88271b3bd6f56071050943b6818a0"
+  },
+  "image": {
+    "id": "2",
+    "filePath": "C:\\Users\\MykytaTitarenko\\Nure\\blockchain\\visual-image-search-in-blockchain-storage\\smart-contracts\\scripts\\test-images\\test-image.jpg",
+    "metadataUri": "ipfs://QmQhJgkMXRxUdfp1yrcyvhm1RUSoopfjp7bBPZk6DuLXxf",
+    "metadataGatewayUrl": "https://gateway.pinata.cloud/ipfs/QmQhJgkMXRxUdfp1yrcyvhm1RUSoopfjp7bBPZk6DuLXxf",
+    "metadataIpfsHash": "QmQhJgkMXRxUdfp1yrcyvhm1RUSoopfjp7bBPZk6DuLXxf",
+    "assetUri": "ipfs://QmVLQqXPhUCRJghj95YhYnDMBVvC78poFFQPPQqRPHskZo",
+    "assetGatewayUrl": "https://gateway.pinata.cloud/ipfs/QmVLQqXPhUCRJghj95YhYnDMBVvC78poFFQPPQqRPHskZo",
+    "assetIpfsHash": "QmVLQqXPhUCRJghj95YhYnDMBVvC78poFFQPPQqRPHskZo",
+    "contentHash": "0x731537530fedecc5b68ebb0af2e434bf9d0de0ba5a820960dcc1043631a443b9",
+    "txHash": "0x08cdb7de9fe74a2ad123717daccbcb106657748a211bced9357e4cc877c66376"
+  },
+  "licenseOffer": {
+    "seller": "0x015A7feD749c4bB6a1863321a71dAcCc5C5976C8",
+    "priceWei": "10000000000000",
+    "priceMatic": "0.00001",
+    "termsUri": "ipfs://QmTsmiaW7as4f7tq5uUKhzq5JDYHfKNiJYs2MSkgHtuc7Z",
+    "termsGatewayUrl": "https://gateway.pinata.cloud/ipfs/QmTsmiaW7as4f7tq5uUKhzq5JDYHfKNiJYs2MSkgHtuc7Z",
+    "termsIpfsHash": "QmTsmiaW7as4f7tq5uUKhzq5JDYHfKNiJYs2MSkgHtuc7Z",
+    "txHash": "0xc2278d5a5f162423a55feb78e7aeebe9f904daa604bb77a609c0d2ef9c218e4b",
+    "active": true
+  },
+  "purchase": {
+    "id": "1",
+    "buyer": "0x015A7feD749c4bB6a1863321a71dAcCc5C5976C8",
+    "seller": "0x015A7feD749c4bB6a1863321a71dAcCc5C5976C8",
+    "imageId": "2",
+    "priceWei": "10000000000000",
+    "txHash": "0x380ed7f8f67e7397d01d9654f8937e732c23177ac5f2293d5140259b7a11c6cb",
+    "purchasedAt": "2026-10-08T15:04:08.231Z"
+  },
+  "withdrawal": {
+    "seller": "0x015A7feD749c4bB6a1863321a71dAcCc5C5976C8",
+    "amountWei": "10000000000000",
+    "txHash": "0xbf8c976891b54ffe1d1f5e9a4055610fc057ccdf882bebe3e4eb56f446d9d44d",
+    "withdrawnAt": "2026-10-08T15:04:08.231Z"
+  }
+}

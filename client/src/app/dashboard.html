@@ -178,24 +178,9 @@
     </article>
     }
 
-    @if (activeFormTab() === 'buy') {
-    <article class="panel form-panel">
-      <h2>4. Buy license</h2>
-      <label>
-        <span>Image ID</span>
-        <input [(ngModel)]="buyImageId" name="buyImageId" />
-      </label>
-      <label>
-        <span>Price in MATIC</span>
-        <input [(ngModel)]="buyPriceMatic" name="buyPriceMatic" placeholder="0.1" />
-      </label>
-      <button type="button" class="primary-button" (click)="buyLicense()">Buy license</button>
-    </article>
-    }
-
     @if (activeFormTab() === 'oracle') {
     <article class="panel form-panel">
-      <h2>5. Oracle access</h2>
+      <h2>4. Oracle access</h2>
       <label>
         <span>Purchase ID</span>
         <input [(ngModel)]="oraclePurchaseId" name="oraclePurchaseId" />
@@ -211,21 +196,14 @@
 
     @if (activeFormTab() === 'search') {
     <article class="panel form-panel search-panel">
-      <h2>6. Similarity search</h2>
+      <h2>5. Similarity search</h2>
       <label>
         <span>Query image</span>
         <input type="file" (change)="handleSearchFileSelection($event)" accept="image/*" />
       </label>
-      <label>
-        <span>Search method</span>
-        <select [ngModel]="imageSearchMethod()" (ngModelChange)="imageSearchMethod.set($event)" name="imageSearchMethod">
-          <option value="cnn">CNN embeddings</option>
-          <option value="histogram">Color histogram baseline</option>
-        </select>
-      </label>
       <div class="address-field">
         <span>Selected file</span>
-        <strong>{{ searchFileName || 'Choose an image to query the author preview index from Pinata' }}</strong>
+        <strong>{{ searchFileName || 'Choose an image to query the registered preview index' }}</strong>
       </div>
       <div class="address-field">
         <span>Query hash</span>
@@ -239,21 +217,14 @@
         }
         @for (result of imageSearchResults(); track result.rank) {
         <article class="search-result-card">
-          <img [src]="imageSearchResultSrc(result)" [alt]="result.fileName || ('Dataset result #' + result.rank)" />
+          <img [src]="imageSearchResultSrc(result)" [alt]="result.fileName" />
           <div class="search-result-copy">
-            <strong>#{{ result.rank }} {{ result.fileName || 'Test dataset image' }}</strong>
-            @if (result.resultType === 'registered') {
+            <strong>#{{ result.rank }} {{ result.fileName }}</strong>
             <span>Image ID: {{ result.imageId }}</span>
             <span>Class: {{ result.className }}</span>
-            }
-            @if (result.resultType === 'dataset') {
-            <span>Source: fixed test dataset</span>
-            }
             <span>Score: {{ result.score.toFixed(4) }}</span>
             <span>Distance: {{ result.distance.toFixed(4) }}</span>
-            @if (result.resultType === 'registered') {
             <a [href]="result.gatewayUrl" target="_blank" rel="noreferrer">Open compressed preview</a>
-            }
           </div>
         </article>
         }
@@ -263,7 +234,7 @@
 
     @if (activeFormTab() === 'set-oracle') {
     <article class="panel form-panel">
-      <h2>7. Set oracle</h2>
+      <h2>6. Set oracle</h2>
       <label>
         <span>New oracle address</span>
         <input [(ngModel)]="licensingOracleAddress" name="licensingOracleAddress" placeholder="0x..." />
@@ -275,7 +246,7 @@
 
     @if (activeFormTab() === 'pause-licensing') {
     <article class="panel form-panel">
-      <h2>8. Pause licensing</h2>
+      <h2>7. Pause licensing</h2>
       <div class="address-field status-field">
         <span>Current contract status</span>
         <strong>{{ licensingPaused() === null ? 'Unknown' : (licensingPaused() ? 'Paused' : 'Active') }}</strong>
@@ -291,7 +262,7 @@
 
     @if (activeFormTab() === 'withdraw-payments') {
     <article class="panel form-panel">
-      <h2>9. Withdraw payments</h2>
+      <h2>8. Withdraw payments</h2>
       <p>Withdraw accrued seller payments from the connected seller wallet.</p>
       <button type="button" class="secondary-button" (click)="withdrawSellerPayments()">Withdraw payments</button>
     </article>
@@ -337,6 +308,26 @@
         <input [(ngModel)]="inspectCandidateHash" name="inspectCandidateHash" placeholder="0x... or plain text" />
       </label>
       <button type="button" class="secondary-button" (click)="inspectImage()">Load image details</button>
+
+      @if (inspectedImageOffer(); as offer) {
+      <div class="address-field status-field">
+        <span>License status</span>
+        <strong>{{ offer.hasOffer ? (offer.active ? 'Active' : 'Inactive') : 'Not configured' }}</strong>
+      </div>
+      <div class="address-field">
+        <span>Price in MATIC</span>
+        <strong>{{ offer.hasOffer ? offer.priceMatic : 'No license offer' }}</strong>
+      </div>
+      <div class="address-field">
+        <span>Seller</span>
+        <strong>{{ offer.hasOffer ? offer.seller : 'No license offer' }}</strong>
+      </div>
+      <div class="address-field">
+        <span>Terms URI</span>
+        <strong>{{ offer.hasOffer ? (offer.termsUri || 'Empty terms URI') : 'No license offer' }}</strong>
+      </div>
+      <button type="button" class="primary-button" [disabled]="!offer.hasOffer || !offer.active" (click)="buyLicense()">Purchase</button>
+      }
     </article>
     }
 
@@ -348,6 +339,22 @@
         <input [(ngModel)]="inspectPurchaseId" name="inspectPurchaseId" />
       </label>
       <button type="button" class="secondary-button" (click)="inspectPurchase()">Load purchase</button>
+    </article>
+    }
+
+    @if (activeInspectTab() === 'my-purchases') {
+    <article class="panel">
+      <h2>My license purchases</h2>
+      <p>Loads all license purchases for the connected wallet.</p>
+      <button type="button" class="secondary-button" (click)="inspectMyPurchases()">Load my purchases</button>
+    </article>
+    }
+
+    @if (activeInspectTab() === 'my-sales') {
+    <article class="panel">
+      <h2>My license sales</h2>
+      <p>Loads all sold licenses for the connected wallet.</p>
+      <button type="button" class="secondary-button" (click)="inspectMySales()">Load my sales</button>
     </article>
     }
 

@@ -10,7 +10,7 @@ describe("LicensingAndPayment", function () {
   async function deployFixture() {
     const [owner, seller, buyer, oracle, other] = await ethers.getSigners();
     const registryFactory = await ethers.getContractFactory("ImageRegistry");
-    const registry = await registryFactory.deploy(owner.address);
+    const registry = await registryFactory.deploy();
     await registry.waitForDeployment();
 
     const licensingFactory = await ethers.getContractFactory("LicensingAndPayment");
@@ -47,7 +47,7 @@ describe("LicensingAndPayment", function () {
   it("rejects zero oracle addresses", async function () {
     const [owner] = await ethers.getSigners();
     const registryFactory = await ethers.getContractFactory("ImageRegistry");
-    const registry = await registryFactory.deploy(owner.address);
+    const registry = await registryFactory.deploy();
     await registry.waitForDeployment();
     const licensingFactory = await ethers.getContractFactory("LicensingAndPayment");
 
@@ -160,14 +160,48 @@ describe("LicensingAndPayment", function () {
       .withArgs(1n, 1n, buyer.address, seller.address, priceWei);
 
     const purchase = await licensing.getPurchase(1n);
-  expect(purchase.id).to.equal(1n);
+    expect(purchase.id).to.equal(1n);
     expect(purchase.imageId).to.equal(1n);
     expect(purchase.buyer).to.equal(buyer.address);
     expect(purchase.seller).to.equal(seller.address);
     expect(purchase.paidAmount).to.equal(priceWei);
-    expect(purchase.oracleConfirmed).to.equal(false);
+    expect(purchase.accessProof).to.equal(ethers.ZeroHash);
     expect(await licensing.hasPurchasedLicense(1n, buyer.address)).to.equal(true);
     expect(await licensing.pendingWithdrawals(seller.address)).to.equal(priceWei);
+  });
+
+  it("returns caller purchases and sales in purchase order", async function () {
+    const fixture = await loadFixture(deployFixture);
+    const { licensing, registry, seller, buyer, other } = fixture;
+    const firstPrice = ethers.parseEther("1");
+    await createOffer(fixture, { priceWei: firstPrice });
+
+    await registry.connect(seller).registerImage(hashLabel("lic-image-2"), "ipfs://lic-image-2", 0);
+    const secondPrice = ethers.parseEther("2");
+    await licensing.connect(seller).configureLicenseOffer(2n, secondPrice, "ipfs://terms-2", true);
+
+    await licensing.connect(buyer).buyLicense(1n, { value: firstPrice });
+    await licensing.connect(other).buyLicense(2n, { value: secondPrice });
+
+    const buyerPurchases = await licensing.connect(buyer).getMyPurchases();
+    expect(buyerPurchases).to.have.lengthOf(1);
+    expect(buyerPurchases[0].id).to.equal(1n);
+    expect(buyerPurchases[0].buyer).to.equal(buyer.address);
+    expect(buyerPurchases[0].seller).to.equal(seller.address);
+
+    const otherPurchases = await licensing.connect(other).getMyPurchases();
+    expect(otherPurchases).to.have.lengthOf(1);
+    expect(otherPurchases[0].id).to.equal(2n);
+    expect(otherPurchases[0].buyer).to.equal(other.address);
+
+    const sellerSales = await licensing.connect(seller).getMySales();
+    expect(sellerSales).to.have.lengthOf(2);
+    expect(sellerSales.map((purchase) => purchase.id)).to.deep.equal([1n, 2n]);
+    expect(sellerSales.map((purchase) => purchase.imageId)).to.deep.equal([1n, 2n]);
+    expect(sellerSales.map((purchase) => purchase.paidAmount)).to.deep.equal([firstPrice, secondPrice]);
+
+    expect(await licensing.connect(fixture.owner).getMyPurchases()).to.deep.equal([]);
+    expect(await licensing.connect(fixture.owner).getMySales()).to.deep.equal([]);
   });
 
   it("blocks buyLicense while paused", async function () {
@@ -214,7 +248,6 @@ describe("LicensingAndPayment", function () {
       .withArgs(1n, oracle.address, proof);
 
     const purchase = await licensing.getPurchase(1n);
-    expect(purchase.oracleConfirmed).to.equal(true);
     expect(purchase.accessProof).to.equal(proof);
   });
 

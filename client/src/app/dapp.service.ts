@@ -116,11 +116,16 @@ export class DappService {
 
   async getImageDetails(addresses: ContractAddresses, imageId: string, candidateHash: string) {
     const provider = this.walletService.getReadOnlyProvider();
-    const contract = new Contract(addresses.imageRegistry, imageRegistryAbi, provider);
-    const image = await contract['getImage'](BigInt(imageId));
-    const hashMatches = candidateHash ? await contract['verifyImageHash'](BigInt(imageId), this.normalizeHash(candidateHash)) : null;
+    const registryContract = new Contract(addresses.imageRegistry, imageRegistryAbi, provider);
+    const licensingContract = new Contract(addresses.licensingAndPayment, licensingAndPaymentAbi, provider);
+    const normalizedImageId = BigInt(imageId);
+    const [image, licenseOffer, hashMatches] = await Promise.all([
+      registryContract['getImage'](normalizedImageId),
+      licensingContract['getLicenseOffer'](normalizedImageId),
+      candidateHash ? registryContract['verifyImageHash'](normalizedImageId, this.normalizeHash(candidateHash)) : Promise.resolve(null),
+    ]);
 
-    return { image, hashMatches };
+    return { image, licenseOffer, hashMatches };
   }
 
   async getCollectionDetails(addresses: ContractAddresses, collectionId: string) {
@@ -135,6 +140,20 @@ export class DappService {
     const contract = new Contract(addresses.licensingAndPayment, licensingAndPaymentAbi, provider);
     const purchase = await contract['getPurchase'](BigInt(purchaseId));
     return { purchase };
+  }
+
+  async getMyPurchases(addresses: ContractAddresses) {
+    const signer = await this.walletService.getSigner();
+    const contract = new Contract(addresses.licensingAndPayment, licensingAndPaymentAbi, signer);
+    const purchases = await contract['getMyPurchases']();
+    return { purchases };
+  }
+
+  async getMySales(addresses: ContractAddresses) {
+    const signer = await this.walletService.getSigner();
+    const contract = new Contract(addresses.licensingAndPayment, licensingAndPaymentAbi, signer);
+    const sales = await contract['getMySales']();
+    return { sales };
   }
 
   async getLicensingPauseStatus(addresses: ContractAddresses): Promise<boolean> {

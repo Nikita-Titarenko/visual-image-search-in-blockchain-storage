@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-
-contract ImageRegistry is Ownable {
+contract ImageRegistry {
     error EmptyContentHash();
     error ImageNotRegistered(uint256 imageId);
     error CollectionNotRegistered(uint256 collectionId);
@@ -12,7 +10,6 @@ contract ImageRegistry is Ownable {
 
     struct ImageAsset {
         uint256 collectionId;
-        address creator;
         address currentOwner;
         bytes32 contentHash;
         string metadataURI;
@@ -29,7 +26,6 @@ contract ImageRegistry is Ownable {
     struct ImageAssetView {
         uint256 id;
         uint256 collectionId;
-        address creator;
         address currentOwner;
         bytes32 contentHash;
         string metadataURI;
@@ -61,10 +57,6 @@ contract ImageRegistry is Ownable {
         string metadataURI
     );
 
-    /// @notice Creates the image registry contract.
-    /// @param initialOwner The address that receives the Ownable administrator role.
-    constructor(address initialOwner) Ownable(initialOwner) {}
-
     /// @notice Registers a new collection for the caller.
     /// @param name The human-readable collection name.
     /// @param metadataURI The metadata URI describing the collection.
@@ -92,7 +84,38 @@ contract ImageRegistry is Ownable {
         string calldata metadataURI,
         uint256 collectionId
     ) external returns (uint256 imageId) {
-        imageId = _registerImage(msg.sender, contentHash, metadataURI, collectionId);
+        if (contentHash == bytes32(0)) {
+            revert EmptyContentHash();
+        }
+        if (_imageIdByHash[contentHash] != 0) {
+            revert ImageHashAlreadyRegistered(contentHash);
+        }
+
+        if (collectionId != 0) {
+            Collection storage collection = _collections[collectionId];
+            if (collection.creator == address(0)) {
+                revert CollectionNotRegistered(collectionId);
+            }
+            if (collection.creator != msg.sender) {
+                revert OnlyCollectionCreatorCanAddImages(collectionId, msg.sender);
+            }
+        }
+
+        imageId = _nextImageId++;
+        _images[imageId] = ImageAsset({
+            collectionId: collectionId,
+            currentOwner: msg.sender,
+            contentHash: contentHash,
+            metadataURI: metadataURI,
+            registeredAt: uint64(block.timestamp)
+        });
+
+        _imageIdByHash[contentHash] = imageId;
+        if (collectionId != 0) {
+            _collectionImages[collectionId].push(imageId);
+        }
+
+        emit ImageRegistered(imageId, collectionId, msg.sender, contentHash, metadataURI);
     }
 
     /// @notice Verifies whether a candidate hash matches the stored original hash.
@@ -101,7 +124,7 @@ contract ImageRegistry is Ownable {
     /// @return isMatch True when the candidate hash matches the stored hash.
     function verifyImageHash(uint256 imageId, bytes32 candidateHash) external view returns (bool) {
         ImageAsset storage asset = _images[imageId];
-        if (asset.creator == address(0)) {
+        if (asset.currentOwner == address(0)) {
             revert ImageNotRegistered(imageId);
         }
         return asset.contentHash == candidateHash;
@@ -111,7 +134,7 @@ contract ImageRegistry is Ownable {
     /// @param imageId The image identifier to query.
     /// @return exists True when the image exists in storage.
     function imageExists(uint256 imageId) external view returns (bool) {
-        return _images[imageId].creator != address(0);
+        return _images[imageId].currentOwner != address(0);
     }
 
     /// @notice Returns the current owner of a registered image.
@@ -119,7 +142,7 @@ contract ImageRegistry is Ownable {
     /// @return owner The current image owner.
     function ownerOfImage(uint256 imageId) external view returns (address) {
         ImageAsset storage asset = _images[imageId];
-        if (asset.creator == address(0)) {
+        if (asset.currentOwner == address(0)) {
             revert ImageNotRegistered(imageId);
         }
         return asset.currentOwner;
@@ -130,7 +153,7 @@ contract ImageRegistry is Ownable {
     /// @return asset The stored image asset data.
     function getImage(uint256 imageId) external view returns (ImageAssetView memory asset) {
         ImageAsset storage storedAsset = _images[imageId];
-        if (storedAsset.creator == address(0)) {
+        if (storedAsset.currentOwner == address(0)) {
             revert ImageNotRegistered(imageId);
         }
         return _toImageAssetView(imageId, storedAsset);
@@ -171,7 +194,6 @@ contract ImageRegistry is Ownable {
         return ImageAssetView({
             id: imageId,
             collectionId: asset.collectionId,
-            creator: asset.creator,
             currentOwner: asset.currentOwner,
             contentHash: asset.contentHash,
             metadataURI: asset.metadataURI,
@@ -189,44 +211,4 @@ contract ImageRegistry is Ownable {
         });
     }
 
-    function _registerImage(
-        address creator,
-        bytes32 contentHash,
-        string calldata metadataURI,
-        uint256 collectionId
-    ) private returns (uint256 imageId) {
-        if (contentHash == bytes32(0)) {
-            revert EmptyContentHash();
-        }
-        if (_imageIdByHash[contentHash] != 0) {
-            revert ImageHashAlreadyRegistered(contentHash);
-        }
-
-        if (collectionId != 0) {
-            Collection storage collection = _collections[collectionId];
-            if (collection.creator == address(0)) {
-                revert CollectionNotRegistered(collectionId);
-            }
-            if (collection.creator != creator) {
-                revert OnlyCollectionCreatorCanAddImages(collectionId, creator);
-            }
-        }
-
-        imageId = _nextImageId++;
-        _images[imageId] = ImageAsset({
-            collectionId: collectionId,
-            creator: creator,
-            currentOwner: creator,
-            contentHash: contentHash,
-            metadataURI: metadataURI,
-            registeredAt: uint64(block.timestamp)
-        });
-
-        _imageIdByHash[contentHash] = imageId;
-        if (collectionId != 0) {
-            _collectionImages[collectionId].push(imageId);
-        }
-
-        emit ImageRegistered(imageId, collectionId, creator, contentHash, metadataURI);
-    }
 }

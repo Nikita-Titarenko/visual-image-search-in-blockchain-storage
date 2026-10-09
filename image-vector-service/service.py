@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import mimetypes
 from collections.abc import Mapping
 from pathlib import Path
@@ -14,7 +13,7 @@ from web3 import AsyncWeb3, WebSocketProvider, Web3
 
 from audit import compute_index_hash, ensure_audit_snapshot, load_audit_metadata, save_audit_metadata, verify_snapshot
 from bootstrap import build_record_from_image_registered_log, ensure_pinata_dataset, get_image_registered_topic, get_image_registry_address, load_manifest, resolve_websocket_rpc_url, save_manifest, write_last_processed_block
-from config import AUDIT_SNAPSHOT_IMAGE_INTERVAL, INDEX_PATH, STATE_DIR, VECTOR_INDEX_VERSION, VECTOR_MODEL_VERSION, VECTOR_TEST_DATASET_ID, VECTOR_TOP_K_DEFAULT, VECTOR_TOP_K_MAX
+from config import AUDIT_SNAPSHOT_IMAGE_INTERVAL, DEV_INDEX_PATH, INDEX_PATH, STATE_DIR, VECTOR_DEV_DATASET_LIMIT, VECTOR_INDEX_VERSION, VECTOR_MODEL_VERSION, VECTOR_TEST_DATASET_ID, VECTOR_TOP_K_DEFAULT, VECTOR_TOP_K_MAX
 from features import FeatureExtractor
 from logger import get_logger
 from models import AuditStatusResponse, DatasetImageRecord, SearchResponse, SearchResult, TestDatasetImageRecord
@@ -23,21 +22,38 @@ from utils import ensure_directory
 
 
 class ImageVectorService:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        include_test_dataset: bool = False,
+        use_fine_tuned_model: bool = True,
+        index_path: Path | None = None,
+        enable_audit_artifacts: bool = True,
+    ) -> None:
         self.logger = get_logger()
         self.logger.info("Initializing ImageVectorService")
         self.logger.info("Initializing FeatureExtractor")
-        self.extractor = FeatureExtractor()
+        self.include_test_dataset = include_test_dataset
+        self.index_path = index_path or (DEV_INDEX_PATH if include_test_dataset else INDEX_PATH)
+        self.enable_audit_artifacts = enable_audit_artifacts
+        self.extractor = FeatureExtractor(load_fine_tuned_weights=use_fine_tuned_model)
         self.logger.info("FeatureExtractor initialized")
         self.test_records: list[TestDatasetImageRecord] = []
         self.records: list[DatasetImageRecord] = []
-        self.records_by_relative_path: dict[str, DatasetImageRecord] = {}
         self.cnn_index: np.ndarray | None = None
         self.hist_index: np.ndarray | None = None
+        self.model_version = self.extractor.model_version
         self.model_hash = self.extractor.compute_model_hash()
         self.index_hash = "0x"
+        self.include_registered_images = True
         self._sync_lock = asyncio.Lock()
-        self.logger.info("ImageVectorService initialized with model hash %s", self.model_hash)
+        self.logger.info(
+            "ImageVectorService initialized with model hash %s, include_test_dataset=%s, use_fine_tuned_model=%s, index_path=%s",
+            self.model_hash,
+            self.include_test_dataset,
+            self.extractor.uses_fine_tuned_weights,
+            self.index_path,
+        )
 
     @staticmethod
     def _coerce_block_number(value: object) -> int:
@@ -54,11 +70,12 @@ class ImageVectorService:
             path
             for path in dataset_path.rglob("*")
             if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
-        )
+        )[:VECTOR_DEV_DATASET_LIMIT]
         self.logger.info(
-            "Loaded %s test dataset images from %s for the fixed search corpus",
+            "Loaded %s test dataset images from %s for the fixed development corpus (limit=%s)",
             len(image_paths),
             dataset_path,
+            VECTOR_DEV_DATASET_LIMIT,
         )
         return [
             TestDatasetImageRecord(
@@ -78,22 +95,9 @@ class ImageVectorService:
         expected_size = self._search_corpus_size()
         return self.cnn_index.shape[0] == expected_size and self.hist_index.shape[0] == expected_size
 
-    def _build_dataset_search_result(self, index: int, rank: int, scores: np.ndarray, distances: np.ndarray) -> SearchResult:
-        test_record = self.test_records[index]
-        encoded_bytes = base64.b64encode(test_record.file_path.read_bytes()).decode("ascii")
-        return SearchResult(
-            resultType="dataset",
-            rank=rank,
-            score=float(scores[index]),
-            distance=float(distances[index]),
-            imageBytes=encoded_bytes,
-            imageMediaType=test_record.media_type,
-        )
-
     def _build_registered_search_result(self, index: int, rank: int, scores: np.ndarray, distances: np.ndarray) -> SearchResult:
-        record = self.records[index - len(self.test_records)]
+        record = self.records[index]
         return SearchResult(
-            resultType="registered",
             rank=rank,
             score=float(scores[index]),
             distance=float(distances[index]),
@@ -119,7 +123,6 @@ class ImageVectorService:
 
             self.records.append(record)
             self.records.sort(key=lambda item: item.image_id)
-            self.records_by_relative_path[record.relative_path] = record
 
             if self.cnn_index is not None and self.hist_index is not None and not self._index_matches_corpus():
                 self.logger.warning("Event listener detected an index/manifest mismatch before append; rebuilding full index")
@@ -138,20 +141,44 @@ class ImageVectorService:
     def _save_index(self) -> None:
         if self.cnn_index is None or self.hist_index is None:
             return
-        np.savez_compressed(INDEX_PATH, cnn=self.cnn_index, hist=self.hist_index)
+        np.savez_compressed(
+            self.index_path,
+            cnn=self.cnn_index,
+            hist=self.hist_index,
+            model_hash=np.array(self.model_hash),
+            corpus_kind=np.array("development" if self.include_test_dataset else "production"),
+        )
+
+    @staticmethod
+    def _read_index_metadata(payload: Any, key: str) -> str | None:
+        if key not in payload:
+            return None
+        value = payload[key]
+        if isinstance(value, np.ndarray):
+            return str(value.item()) if value.shape == () else None
+        return str(value)
+
+    def _loaded_index_matches_model(self, payload: Any) -> bool:
+        saved_model_hash = self._read_index_metadata(payload, "model_hash")
+        saved_corpus_kind = self._read_index_metadata(payload, "corpus_kind")
+        expected_corpus_kind = "development" if self.include_test_dataset else "production"
+        return saved_model_hash == self.model_hash and saved_corpus_kind == expected_corpus_kind
 
     def _refresh_audit_metadata(self) -> None:
-        self.index_hash = compute_index_hash() if INDEX_PATH.exists() else "0x"
+        if not self.enable_audit_artifacts:
+            self.logger.info("Skipping audit metadata refresh because audit artifacts are disabled for this service instance")
+            return
+        self.index_hash = compute_index_hash(self.index_path) if self.index_path.exists() else "0x"
         self.logger.info("Computed index hash %s", self.index_hash)
         existing_metadata = load_audit_metadata()
         save_audit_metadata(
             {
                 **existing_metadata,
-                "modelVersion": VECTOR_MODEL_VERSION,
+                "modelVersion": self.model_version,
                 "modelHash": self.model_hash,
                 "indexVersion": VECTOR_INDEX_VERSION,
                 "indexHash": self.index_hash,
-                "datasetSize": self._search_corpus_size(),
+                "datasetSize": len(self.records),
             }
         )
         self.logger.info("Audit metadata saved")
@@ -164,6 +191,9 @@ class ImageVectorService:
         return dataset_size > 0 and dataset_size % AUDIT_SNAPSHOT_IMAGE_INTERVAL == 0
 
     async def _maybe_record_audit_snapshot(self, trigger: str) -> bool:
+        if not self.enable_audit_artifacts:
+            self.logger.info("Skipping on-chain audit snapshot after %s because audit artifacts are disabled", trigger)
+            return False
         if not self._should_record_audit_snapshot():
             self.logger.info(
                 "Skipping on-chain audit snapshot after %s because dataset size %s is not a multiple of %s",
@@ -174,18 +204,37 @@ class ImageVectorService:
             return False
 
         await ensure_audit_snapshot(
-            VECTOR_MODEL_VERSION,
+            self.model_version,
             self.model_hash,
             VECTOR_INDEX_VERSION,
             self.index_hash,
-            self._search_corpus_size(),
+            len(self.records),
         )
         self.logger.info(
             "On-chain audit snapshot ensured after %s at dataset size %s",
             trigger,
-            self._search_corpus_size(),
+            len(self.records),
         )
         return True
+
+    @staticmethod
+    def _stack_feature_rows(rows: list[np.ndarray]) -> np.ndarray:
+        return np.vstack(rows).astype(np.float32)
+
+    def _merge_index_rows(self, cnn_rows: list[np.ndarray], hist_rows: list[np.ndarray]) -> None:
+        new_cnn_index = self._stack_feature_rows(cnn_rows)
+        new_hist_index = self._stack_feature_rows(hist_rows)
+
+        if self.cnn_index is None or self.hist_index is None:
+            self.cnn_index = new_cnn_index
+            self.hist_index = new_hist_index
+            return
+
+        self.cnn_index = self._stack_feature_rows([self.cnn_index, new_cnn_index])
+        self.hist_index = self._stack_feature_rows([self.hist_index, new_hist_index])
+
+    def _extract_record_features(self, image_bytes: bytes) -> tuple[np.ndarray, np.ndarray]:
+        return self.extractor.extract_features(image_bytes)
 
     async def _append_records_to_index(self, new_records: list[DatasetImageRecord]) -> None:
         cnn_vectors: list[np.ndarray] = []
@@ -199,41 +248,34 @@ class ImageVectorService:
                 record.relative_path,
             )
             image_bytes = await fetch_bytes(record.gateway_url)
-            cnn_feature, hist_feature = self.extractor.extract_features(image_bytes)
+            cnn_feature, hist_feature = self._extract_record_features(image_bytes)
             cnn_vectors.append(cnn_feature)
             hist_vectors.append(hist_feature)
 
-        new_cnn_index = np.vstack(cnn_vectors).astype(np.float32)
-        new_hist_index = np.vstack(hist_vectors).astype(np.float32)
-
-        if self.cnn_index is None or self.hist_index is None:
-            self.cnn_index = new_cnn_index
-            self.hist_index = new_hist_index
-        else:
-            self.cnn_index = np.vstack([self.cnn_index, new_cnn_index]).astype(np.float32)
-            self.hist_index = np.vstack([self.hist_index, new_hist_index]).astype(np.float32)
+        self._merge_index_rows(cnn_vectors, hist_vectors)
 
         self._save_index()
 
-    def _loaded_index_matches_manifest(self) -> bool:
-        return self._index_matches_corpus()
-
-    async def initialize(self) -> None:
-        self.logger.info("Service initialize started")
+    async def initialize(self, include_registered_images: bool = True) -> None:
+        self.logger.info("Service initialize started with include_registered_images=%s", include_registered_images)
         historical_added_count = 0
         async with self._sync_lock:
+            self.include_registered_images = include_registered_images
             ensure_directory(STATE_DIR)
-            self.test_records = self._load_test_dataset_records()
-            self.records, historical_added_count = await ensure_pinata_dataset()
-            self.records_by_relative_path = {record.relative_path: record for record in self.records}
+            self.test_records = self._load_test_dataset_records() if self.include_test_dataset else []
+            if include_registered_images:
+                self.records, historical_added_count = await ensure_pinata_dataset()
+            else:
+                self.records = []
+                historical_added_count = 0
             self.logger.info(
                 "Search corpus ready with %s test records and %s registered records",
                 len(self.test_records),
                 len(self.records),
             )
-            if INDEX_PATH.exists():
-                self.logger.info("Existing feature index found at %s, loading", INDEX_PATH)
-                index_payload = np.load(INDEX_PATH)
+            if self.index_path.exists():
+                self.logger.info("Existing feature index found at %s, loading", self.index_path)
+                index_payload = np.load(self.index_path)
                 self.cnn_index = index_payload["cnn"].astype(np.float32)
                 self.hist_index = index_payload["hist"].astype(np.float32)
                 self.logger.info(
@@ -241,12 +283,14 @@ class ImageVectorService:
                     getattr(self.cnn_index, "shape", None),
                     getattr(self.hist_index, "shape", None),
                 )
-                if not self._loaded_index_matches_manifest():
+                if not self._index_matches_corpus() or not self._loaded_index_matches_model(index_payload):
                     self.logger.warning(
-                        "Feature index shape does not match search corpus size: cnn_rows=%s hist_rows=%s expected_rows=%s",
+                        "Feature index metadata mismatch detected: cnn_rows=%s hist_rows=%s expected_rows=%s saved_model_hash=%s current_model_hash=%s",
                         self.cnn_index.shape[0],
                         self.hist_index.shape[0],
                         self._search_corpus_size(),
+                        self._read_index_metadata(index_payload, "model_hash"),
+                        self.model_hash,
                     )
                     if self._search_corpus_size() > 0:
                         self.logger.info("Rebuilding feature index to restore manifest alignment")
@@ -257,12 +301,18 @@ class ImageVectorService:
                         self.hist_index = None
             else:
                 if self._search_corpus_size() > 0:
-                    self.logger.info("Feature index not found at %s, rebuilding", INDEX_PATH)
+                    self.logger.info("Feature index not found at %s, rebuilding", self.index_path)
                     await self.rebuild_index()
                 else:
                     self.logger.info("Feature index not found and search corpus is empty")
 
             self._refresh_audit_metadata()
+            self.logger.info(
+                "Service initialize finished: include_registered_images=%s search_corpus_size=%s index_ready=%s",
+                self.include_registered_images,
+                self._search_corpus_size(),
+                self.cnn_index is not None and self.hist_index is not None,
+            )
         if historical_added_count > 0:
             await self._maybe_record_audit_snapshot("historical image sync")
         else:
@@ -270,10 +320,12 @@ class ImageVectorService:
 
     async def rebuild_index(self) -> None:
         self.logger.info("Rebuild index started")
-        if not self.test_records:
+        if self.include_test_dataset and not self.test_records:
             self.test_records = self._load_test_dataset_records()
-        self.records = load_manifest()
-        self.records_by_relative_path = {record.relative_path: record for record in self.records}
+        if self.include_registered_images:
+            self.records = load_manifest()
+        else:
+            self.records = []
         self.logger.info(
             "Loaded %s test records and %s manifest records for index rebuild",
             len(self.test_records),
@@ -282,17 +334,18 @@ class ImageVectorService:
         cnn_vectors: list[np.ndarray] = []
         hist_vectors: list[np.ndarray] = []
 
-        for position, record in enumerate(self.test_records, start=1):
-            self.logger.info(
-                "Rebuild index processing test record %s/%s: %s",
-                position,
-                len(self.test_records),
-                record.relative_path,
-            )
-            image_bytes = record.file_path.read_bytes()
-            cnn_feature, hist_feature = self.extractor.extract_features(image_bytes)
-            cnn_vectors.append(cnn_feature)
-            hist_vectors.append(hist_feature)
+        if self.include_test_dataset:
+            for position, record in enumerate(self.test_records, start=1):
+                self.logger.info(
+                    "Rebuild index processing test record %s/%s: %s",
+                    position,
+                    len(self.test_records),
+                    record.relative_path,
+                )
+                image_bytes = record.file_path.read_bytes()
+                cnn_feature, hist_feature = self._extract_record_features(image_bytes)
+                cnn_vectors.append(cnn_feature)
+                hist_vectors.append(hist_feature)
 
         for position, record in enumerate(self.records, start=1):
             self.logger.info(
@@ -302,16 +355,28 @@ class ImageVectorService:
                 record.relative_path,
             )
             image_bytes = await fetch_bytes(record.gateway_url)
-            cnn_feature, hist_feature = self.extractor.extract_features(image_bytes)
+            cnn_feature, hist_feature = self._extract_record_features(image_bytes)
             cnn_vectors.append(cnn_feature)
             hist_vectors.append(hist_feature)
 
-        self.cnn_index = np.vstack(cnn_vectors).astype(np.float32)
-        self.hist_index = np.vstack(hist_vectors).astype(np.float32)
+        if not cnn_vectors or not hist_vectors:
+            self.cnn_index = None
+            self.hist_index = None
+            self.logger.info("Rebuild index finished with an empty search corpus; no index file written")
+            return
+
+        self.cnn_index = self._stack_feature_rows(cnn_vectors)
+        self.hist_index = self._stack_feature_rows(hist_vectors)
         self._save_index()
         self.logger.info(
+            "Rebuild index finished: total_vectors=%s cnn_shape=%s hist_shape=%s",
+            len(cnn_vectors),
+            self.cnn_index.shape,
+            self.hist_index.shape,
+        )
+        self.logger.info(
             "Rebuild index completed and saved to %s: cnn_shape=%s hist_shape=%s",
-            INDEX_PATH,
+            self.index_path,
             self.cnn_index.shape,
             self.hist_index.shape,
         )
@@ -350,19 +415,19 @@ class ImageVectorService:
             finally:
                 await provider.disconnect()
 
-    async def search(self, query_file: UploadFile, method: str, top_k: int) -> SearchResponse:
-        self.logger.info("Search started: file=%s method=%s requested_top_k=%s", query_file.filename, method, top_k)
+    async def search(self, query_file: UploadFile, top_k: int) -> SearchResponse:
+        self.logger.info("Search started: file=%s requested_top_k=%s method=cnn", query_file.filename, top_k)
         top_k = max(1, min(top_k or VECTOR_TOP_K_DEFAULT, VECTOR_TOP_K_MAX))
-        if self._search_corpus_size() == 0:
-            self.logger.info("Search completed with no dataset records available")
+        if len(self.records) == 0:
+            self.logger.info("Search completed with no registered image records available")
             image_bytes = await query_file.read()
             if not image_bytes:
                 self.logger.error("Search rejected because query image is empty")
                 raise HTTPException(status_code=400, detail="Query image is empty.")
             return SearchResponse(
-                method=(method.lower().strip() or "cnn"),
+                method="cnn",
                 topK=0,
-                modelVersion=VECTOR_MODEL_VERSION,
+                modelVersion=self.model_version,
                 indexVersion=VECTOR_INDEX_VERSION,
                 queryHash=self._hash_query(image_bytes),
                 results=[],
@@ -378,39 +443,26 @@ class ImageVectorService:
             raise HTTPException(status_code=400, detail="Query image is empty.")
 
         query_cnn, query_hist = self.extractor.extract_features(image_bytes)
-        normalized_method = method.lower().strip() or "cnn"
-        if normalized_method not in {"cnn", "histogram"}:
-            self.logger.error("Search rejected because method %s is invalid", normalized_method)
-            raise HTTPException(status_code=400, detail="method must be either 'cnn' or 'histogram'.")
+        scores = self.cnn_index @ query_cnn
+        distances = 1 - scores
 
-        if normalized_method == "cnn":
-            scores = self.cnn_index @ query_cnn
-            distances = 1 - scores
-        else:
-            scores = self.hist_index @ query_hist
-            distances = 1 - scores
-
-        available_results = min(top_k, self._search_corpus_size(), len(scores))
+        available_results = min(top_k, len(self.records), len(scores))
         ranked_indices = np.argsort(distances)[:available_results]
         results: list[SearchResult] = []
         for position, index in enumerate(ranked_indices, start=1):
-            if index < len(self.test_records):
-                results.append(self._build_dataset_search_result(int(index), position, scores, distances))
-            else:
-                results.append(self._build_registered_search_result(int(index), position, scores, distances))
+            results.append(self._build_registered_search_result(int(index), position, scores, distances))
 
         self.logger.info(
-            "Search completed: method=%s top_k=%s results=%s query_hash=%s",
-            normalized_method,
+            "Search completed: method=cnn top_k=%s results=%s query_hash=%s",
             top_k,
             len(results),
             self._hash_query(image_bytes),
         )
 
         return SearchResponse(
-            method=normalized_method,
+            method="cnn",
             topK=available_results,
-            modelVersion=VECTOR_MODEL_VERSION,
+            modelVersion=self.model_version,
             indexVersion=VECTOR_INDEX_VERSION,
             queryHash=self._hash_query(image_bytes),
             results=results,
@@ -426,11 +478,11 @@ class ImageVectorService:
         self.logger.info("Audit status computation completed: on_chain_match=%s", on_chain_match)
 
         return AuditStatusResponse(
-            modelVersion=VECTOR_MODEL_VERSION,
+            modelVersion=self.model_version,
             modelHash=self.model_hash,
             indexVersion=VECTOR_INDEX_VERSION,
             indexHash=self.index_hash,
-            datasetSize=self._search_corpus_size(),
+            datasetSize=len(self.records),
             snapshotId=snapshot_id,
             onChainMatch=on_chain_match,
             metadata=metadata,

@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
+import { formatEther } from 'ethers';
 import { FormsModule } from '@angular/forms';
 
 import { DEFAULT_CONTRACT_ADDRESSES, POLYGON_AMOY_CONFIG } from './contracts.config';
@@ -20,17 +21,18 @@ export class App {
     { id: 'collection', label: '1. Collection' },
     { id: 'image', label: '2. Image' },
     { id: 'license', label: '3. License' },
-    { id: 'buy', label: '4. Purchase' },
-    { id: 'oracle', label: '5. Oracle' },
-    { id: 'search', label: '6. Search' },
-    { id: 'set-oracle', label: '7. Set Oracle' },
-    { id: 'pause-licensing', label: '8. Pause Licensing' },
-    { id: 'withdraw-payments', label: '9. Withdraw Payments' },
+    { id: 'oracle', label: '4. Oracle' },
+    { id: 'search', label: '5. Search' },
+    { id: 'set-oracle', label: '6. Set Oracle' },
+    { id: 'pause-licensing', label: '7. Pause Licensing' },
+    { id: 'withdraw-payments', label: '8. Withdraw Payments' },
   ] as const;
   protected readonly inspectTabs = [
     { id: 'collection', label: 'Inspect Collection' },
     { id: 'image', label: 'Inspect Image' },
     { id: 'purchase', label: 'Inspect Purchase' },
+    { id: 'my-purchases', label: 'My Purchases' },
+    { id: 'my-sales', label: 'My Sales' },
     { id: 'snapshot', label: 'Inspect Snapshot' },
   ] as const;
   protected readonly walletService = inject(WalletService);
@@ -53,9 +55,17 @@ export class App {
   protected readonly oracleDownloadUrl = signal('');
   protected readonly oracleTokenExpiry = signal('');
   protected readonly imageSearchResults = signal<ImageSearchResult[]>([]);
-  protected readonly imageSearchMethod = signal<'cnn' | 'histogram'>('cnn');
   protected readonly imageSearchQueryHash = signal('');
   protected readonly licensingPaused = signal<boolean | null>(null);
+  protected readonly inspectedImageOffer = signal<{
+    imageId: string;
+    seller: string;
+    priceWei: bigint;
+    priceMatic: string;
+    termsUri: string;
+    active: boolean;
+    hasOffer: boolean;
+  } | null>(null);
   protected readonly activeFormTab = signal<(typeof this.formTabs)[number]['id']>('collection');
   protected readonly activeInspectTab = signal<(typeof this.inspectTabs)[number]['id']>('collection');
 
@@ -79,9 +89,6 @@ export class App {
   protected licenseDescription = '';
   protected licenseUsageTerms = '';
 
-  protected buyImageId = '';
-  protected buyPriceMatic = '';
-
   protected oraclePurchaseId = '';
   protected selectedSearchFile: File | null = null;
   protected searchFileName = '';
@@ -103,10 +110,6 @@ export class App {
   });
 
   protected imageSearchResultSrc(result: ImageSearchResult): string {
-    if (result.resultType === 'dataset') {
-      return result.imageBytes ? `data:${result.imageMediaType || 'image/jpeg'};base64,${result.imageBytes}` : '';
-    }
-
     return result.gatewayUrl || '';
   }
 
@@ -214,7 +217,6 @@ export class App {
         this.imageCollectionId,
       );
       this.licenseImageId = result.imageId;
-      this.buyImageId = result.imageId;
       this.inspectImageId = result.imageId;
       return `Image ID ${result.imageId} tx ${result.transactionHash}`;
     });
@@ -297,7 +299,15 @@ export class App {
 
   protected async buyLicense(): Promise<void> {
     await this.runAction('License purchased', async () => {
-      const result = await this.dappService.buyLicense(this.contractAddresses, this.buyImageId, this.buyPriceMatic);
+      const offer = this.inspectedImageOffer();
+      if (!offer?.hasOffer) {
+        throw new Error('Load image details for an image with a configured license offer first.');
+      }
+      if (!offer.active) {
+        throw new Error('The loaded license offer is inactive and cannot be purchased.');
+      }
+
+      const result = await this.dappService.buyLicense(this.contractAddresses, offer.imageId, offer.priceMatic);
       this.oraclePurchaseId = result.purchaseId;
       this.inspectPurchaseId = result.purchaseId;
       return `Purchase ID ${result.purchaseId} tx ${result.transactionHash}`;
@@ -369,7 +379,6 @@ export class App {
 
       const payload = await this.imageVectorSearchService.searchSimilarImages(
         this.selectedSearchFile,
-        this.imageSearchMethod(),
         10,
       );
 
@@ -426,6 +435,16 @@ export class App {
         this.inspectImageId,
         this.inspectCandidateHash,
       );
+      const hasOffer = payload.licenseOffer.seller !== '0x0000000000000000000000000000000000000000';
+      this.inspectedImageOffer.set({
+        imageId: payload.image.id.toString(),
+        seller: payload.licenseOffer.seller,
+        priceWei: payload.licenseOffer.priceWei,
+        priceMatic: formatEther(payload.licenseOffer.priceWei),
+        termsUri: payload.licenseOffer.termsURI,
+        active: payload.licenseOffer.active,
+        hasOffer,
+      });
       this.inspectorOutput.set(this.stringifyInspectorOutput(payload));
       return `Loaded image ${this.inspectImageId}`;
     });
@@ -444,6 +463,22 @@ export class App {
       const payload = await this.dappService.getPurchaseDetails(this.contractAddresses, this.inspectPurchaseId);
       this.inspectorOutput.set(this.stringifyInspectorOutput(payload));
       return `Loaded purchase ${this.inspectPurchaseId}`;
+    });
+  }
+
+  protected async inspectMyPurchases(): Promise<void> {
+    await this.runAction('Caller purchases loaded', async () => {
+      const payload = await this.dappService.getMyPurchases(this.contractAddresses);
+      this.inspectorOutput.set(this.stringifyInspectorOutput(payload));
+      return `Loaded ${payload.purchases.length} purchases for ${this.walletService.account()}`;
+    });
+  }
+
+  protected async inspectMySales(): Promise<void> {
+    await this.runAction('Caller sales loaded', async () => {
+      const payload = await this.dappService.getMySales(this.contractAddresses);
+      this.inspectorOutput.set(this.stringifyInspectorOutput(payload));
+      return `Loaded ${payload.sales.length} sales for ${this.walletService.account()}`;
     });
   }
 

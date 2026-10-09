@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
@@ -22,11 +23,11 @@ def _load_audit_artifact() -> dict[str, Any]:
     return json.loads(artifact_path.read_text(encoding="utf-8"))
 
 
-def compute_index_hash() -> str:
-    logger.info("Computing index hash from %s and %s", MANIFEST_PATH, INDEX_PATH)
+def compute_index_hash(index_path: Path = INDEX_PATH, manifest_path: Path = MANIFEST_PATH) -> str:
+    logger.info("Computing index hash from %s and %s", manifest_path, index_path)
     digest = hashlib.sha256(VECTOR_INDEX_VERSION.encode("utf-8"))
-    digest.update(MANIFEST_PATH.read_bytes())
-    digest.update(INDEX_PATH.read_bytes())
+    digest.update(manifest_path.read_bytes())
+    digest.update(index_path.read_bytes())
     return f"0x{digest.hexdigest()}"
 
 

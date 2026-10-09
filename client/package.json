@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "sync-public-env": "node ../scripts/sync-client-public-config.js",
+    "sync-public-env": "node scripts/sync-client-public-config.js",
     "start": "npm run sync-public-env && ng serve",
     "build": "npm run sync-public-env && ng build",
     "watch": "npm run sync-public-env && ng build --watch --configuration development",
