@@ -48,6 +48,12 @@ contract ModelAndIndexAudit is Ownable {
     /// @param initialOwner The address that receives the Ownable administrator role.
     constructor(address initialOwner) Ownable(initialOwner) {}
 
+    /// @notice Transfers the Ownable administrator role to a new address.
+    /// @param newOwner The address that will become the next contract owner.
+    function setOwner(address newOwner) external onlyOwner {
+        transferOwnership(newOwner);
+    }
+
     /// @notice Records a new audit snapshot for a model and its search index.
     /// @param modelVersion The semantic version or label of the model.
     /// @param modelHash The immutable hash of the model artifact.
@@ -89,24 +95,26 @@ contract ModelAndIndexAudit is Ownable {
         emit AuditSnapshotRecorded(snapshotId, modelVersion, modelHash, indexVersion, indexHash, metadataURI, msg.sender);
     }
 
-    /// @notice Returns a previously recorded audit snapshot.
-    /// @param snapshotId The snapshot identifier to query.
-    /// @return snapshot The stored audit snapshot.
-    function getSnapshot(uint256 snapshotId) external view returns (AuditSnapshotView memory snapshot) {
-        AuditSnapshot storage storedSnapshot = _snapshots[snapshotId];
-        if (storedSnapshot.submittedBy == address(0)) {
-            revert SnapshotDoesNotExist(snapshotId);
+    /// @notice Returns all recorded audit snapshots ordered from newest to oldest.
+    /// @return snapshots The stored audit snapshots in reverse creation order.
+    function getAllSnapshots() external view returns (AuditSnapshotView[] memory snapshots) {
+        uint256 totalSnapshots = _nextSnapshotId - 1;
+        snapshots = new AuditSnapshotView[](totalSnapshots);
+
+        for (uint256 offset = 0; offset < totalSnapshots; offset++) {
+            uint256 snapshotId = totalSnapshots - offset;
+            AuditSnapshot storage storedSnapshot = _snapshots[snapshotId];
+            snapshots[offset] = AuditSnapshotView({
+                id: snapshotId,
+                modelVersion: storedSnapshot.modelVersion,
+                modelHash: storedSnapshot.modelHash,
+                indexVersion: storedSnapshot.indexVersion,
+                indexHash: storedSnapshot.indexHash,
+                metadataURI: storedSnapshot.metadataURI,
+                submittedBy: storedSnapshot.submittedBy,
+                recordedAt: storedSnapshot.recordedAt
+            });
         }
-        return AuditSnapshotView({
-            id: snapshotId,
-            modelVersion: storedSnapshot.modelVersion,
-            modelHash: storedSnapshot.modelHash,
-            indexVersion: storedSnapshot.indexVersion,
-            indexHash: storedSnapshot.indexHash,
-            metadataURI: storedSnapshot.metadataURI,
-            submittedBy: storedSnapshot.submittedBy,
-            recordedAt: storedSnapshot.recordedAt
-        });
     }
 
     /// @notice Verifies whether the supplied model and index hashes match a stored snapshot.

@@ -6,8 +6,8 @@ from typing import Any
 import httpx
 from fastapi import HTTPException
 
-from .config import DEFAULT_GATEWAY
-from .utils import ipfs_to_gateway
+from config import DEFAULT_GATEWAY
+from utils import ipfs_to_gateway
 
 
 async def pin_file_to_ipfs(file_name: str, content: bytes, content_type: str, pinata_jwt: str) -> dict[str, Any]:

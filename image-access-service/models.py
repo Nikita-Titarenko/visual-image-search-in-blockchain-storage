@@ -12,8 +12,6 @@ class OracleContracts:
     w3: Web3
     licensing: Any
     registry: Any
-    oracle_account: Any
-    oracle_address: str
     pinata_jwt: str
 
 

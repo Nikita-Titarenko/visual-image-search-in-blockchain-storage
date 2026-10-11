@@ -1,0 +1,64 @@
+{
+  "assets": {
+    "0xd23e192c9098a741c616efb19d728f3823d0f4d2df734c2ef2cab856f58b098f": {
+      "contentHash": "0xd23e192c9098a741c616efb19d728f3823d0f4d2df734c2ef2cab856f58b098f",
+      "encryptedAssetUri": "ipfs://QmU4FtfmHMRGLfuQhRB4TvTuciBwBH1HUQoDQnjrxr2Faz",
+      "encryptedGatewayUrl": "https://gateway.pinata.cloud/ipfs/QmU4FtfmHMRGLfuQhRB4TvTuciBwBH1HUQoDQnjrxr2Faz",
+      "decryptionKey": "cMv0+el/NwJJ3zjPn0m8jv+zOb6RyqFptHENY/hUMbo=",
+      "nonce": "ker5KTaUtctPvsGq",
+      "originalFileName": "plane.webp",
+      "contentType": "image/webp",
+      "createdAt": "2026-10-10T13:00:49.652066Z"
+    },
+    "0x3cfc0450cb612dadd52b7914f1767ee76ee5da22701729bc36302156cacf342d": {
+      "contentHash": "0x3cfc0450cb612dadd52b7914f1767ee76ee5da22701729bc36302156cacf342d",
+      "encryptedAssetUri": "ipfs://QmTqAgHXAhSNxqVV2PW8UDqDsT2wJEsDRQZpN79yoD9LoX",
+      "encryptedGatewayUrl": "https://gateway.pinata.cloud/ipfs/QmTqAgHXAhSNxqVV2PW8UDqDsT2wJEsDRQZpN79yoD9LoX",
+      "decryptionKey": "srAbDYqSobXFJA7uYztj5Yzaiz6QZfeVC14OTQpUHOg=",
+      "nonce": "7d40DpJep5rpxEZN",
+      "originalFileName": "Nautilus_pompilius.jpg",
+      "contentType": "image/jpeg",
+      "createdAt": "2026-10-10T12:08:43.884901Z"
+    },
+    "0xa1d8203f56b1588658aeff8bd1aa4ed008b5c9efce8f5d827c8fdc472e27531e": {
+      "contentHash": "0xa1d8203f56b1588658aeff8bd1aa4ed008b5c9efce8f5d827c8fdc472e27531e",
+      "encryptedAssetUri": "ipfs://QmV4pfoHreWotsmc7nXuvphLwTPWje2fQ41WeoCFmm3ofE",
+      "encryptedGatewayUrl": "https://gateway.pinata.cloud/ipfs/QmV4pfoHreWotsmc7nXuvphLwTPWje2fQ41WeoCFmm3ofE",
+      "decryptionKey": "iJUKoZjRW0b8L1QDRxoZU5Mlf8FH1nLnMZgmMe112kA=",
+      "nonce": "GPKS+5Ne+4A4ZKZH",
+      "originalFileName": "car.jpg",
+      "contentType": "image/jpeg",
+      "createdAt": "2026-10-06T09:35:16.994028Z"
+    },
+    "0x904b31650efb9407722c7954a92cd1162bb8d6e48868062a9168742936a8ec5c": {
+      "contentHash": "0x904b31650efb9407722c7954a92cd1162bb8d6e48868062a9168742936a8ec5c",
+      "encryptedAssetUri": "ipfs://QmTXVqC6yy8rRwMFHhfYN3hUp6HM3mvrqgppGkdGAyrAeT",
+      "encryptedGatewayUrl": "https://gateway.pinata.cloud/ipfs/QmTXVqC6yy8rRwMFHhfYN3hUp6HM3mvrqgppGkdGAyrAeT",
+      "decryptionKey": "X/EEUPG1+rDN+wuLw2sVuf6GqYKZRplZfPdHesjql6I=",
+      "nonce": "uk/M8U3NofOHz4Is",
+      "originalFileName": "My_nautilus_pompilius.jpg",
+      "contentType": "image/jpeg",
+      "createdAt": "2026-10-10T12:11:20.039828Z"
+    },
+    "0xb08f366616268a431a542cd1984c06648612add5ec37d30aaa0bd1d3558ba78c": {
+      "contentHash": "0xb08f366616268a431a542cd1984c06648612add5ec37d30aaa0bd1d3558ba78c",
+      "encryptedAssetUri": "ipfs://QmabnAFy34K6vwEGZ4hg2tUC4k7MmpK2d6Ptjqe9amxGMH",
+      "encryptedGatewayUrl": "https://gateway.pinata.cloud/ipfs/QmabnAFy34K6vwEGZ4hg2tUC4k7MmpK2d6Ptjqe9amxGMH",
+      "decryptionKey": "WWFW9amcULMgWFZ1gdL//UzZrg+xXGD3p4fwa9T2zYI=",
+      "nonce": "X6idihRsCkVT6lwo",
+      "originalFileName": "Nautilus_belauensis_from_Palau.jpg",
+      "contentType": "image/jpeg",
+      "createdAt": "2026-10-10T12:50:36.471005Z"
+    },
+    "0x7dae11094b908fde82c9c6c608e2c481423e2cf582b1ccfb1db8fbeb12e3e1d5": {
+      "contentHash": "0x7dae11094b908fde82c9c6c608e2c481423e2cf582b1ccfb1db8fbeb12e3e1d5",
+      "encryptedAssetUri": "ipfs://QmWDghd1NY3xyTxak2DxPwaYnZ9xDASDPWCoJRDLxwntUy",
+      "encryptedGatewayUrl": "https://gateway.pinata.cloud/ipfs/QmWDghd1NY3xyTxak2DxPwaYnZ9xDASDPWCoJRDLxwntUy",
+      "decryptionKey": "Sqwnpy06r/w0qNvpjP7qXFcI90T60Gw1ipPyVoMgNQ4=",
+      "nonce": "AxlBlUjMGWNvyIQG",
+      "originalFileName": "cat.jpg",
+      "contentType": "image/jpeg",
+      "createdAt": "2026-10-10T15:50:28.734523Z"
+    }
+  }
+}

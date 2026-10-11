@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from .config import DEFAULT_GATEWAY
+from config import DEFAULT_GATEWAY
 
 
 def utcnow() -> datetime:

@@ -11,17 +11,7 @@ export interface OracleEncryptedUploadResult {
 }
 
 export interface OracleAccessClaimResult {
-  purchaseId: number;
-  imageId: number;
-  buyerAddress: string;
-  encryptedAssetUri: string;
-  metadataUri: string;
-  metadataName: string;
-  accessToken: string;
-  accessProof: string;
-  expiresAt: string;
-  downloadUrl: string;
-  confirmationTransactionHash: string | null;
+  blob: Blob;
 }
 
 const ORACLE_BASE_URL = 'http://localhost:8000';
@@ -50,8 +40,8 @@ export class OracleAccessService {
     return (await response.json()) as OracleEncryptedUploadResult;
   }
 
-  async claimAccessToken(purchaseId: string, buyerAddress: string, signedMessage: string, issuedAt: string): Promise<OracleAccessClaimResult> {
-    const response = await fetch(`${ORACLE_BASE_URL}/api/oracle/claim-access`, {
+  async downloadDecryptedFile(purchaseId: string, buyerAddress: string, signedMessage: string, issuedAt: string): Promise<Blob> {
+    const response = await fetch(`${ORACLE_BASE_URL}/api/oracle/download`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -64,16 +54,6 @@ export class OracleAccessService {
       }),
     });
 
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { detail?: string; error?: string } | null;
-      throw new Error(payload?.detail || payload?.error || 'Oracle access claim failed.');
-    }
-
-    return (await response.json()) as OracleAccessClaimResult;
-  }
-
-  async downloadDecryptedFile(downloadUrl: string, accessToken: string): Promise<Blob> {
-    const response = await fetch(`${ORACLE_BASE_URL}${downloadUrl}?token=${encodeURIComponent(accessToken)}`);
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as { detail?: string; error?: string } | null;
       throw new Error(payload?.detail || payload?.error || 'Decrypted download failed.');

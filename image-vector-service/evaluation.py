@@ -611,11 +611,12 @@ def _bootstrap_confidence_intervals(
     }
 
 
-def _build_structured_features(service: ImageVectorService) -> tuple[np.ndarray, np.ndarray]:
+def _build_structured_and_histogram_features(service: ImageVectorService) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     logger = get_logger()
     labels: list[str] = []
-    feature_rows: list[np.ndarray] = []
-    logger.info("Starting structured feature extraction for %s dataset images", len(service.test_records))
+    structured_rows: list[np.ndarray] = []
+    histogram_rows: list[np.ndarray] = []
+    logger.info("Starting structured and histogram feature extraction for %s dataset images", len(service.test_records))
 
     for record_index, record in enumerate(service.test_records, start=1):
         image_bytes = record.file_path.read_bytes()
@@ -626,18 +627,23 @@ def _build_structured_features(service: ImageVectorService) -> tuple[np.ndarray,
         else:
             class_name = relative_path.stem
         labels.append(class_name)
-        feature_rows.append(service.extractor.extract_structured_features(image))
+        structured_rows.append(service.extractor.extract_structured_features(image))
+        histogram_rows.append(service.extractor.extract_color_histogram(image))
 
         if record_index == 1 or record_index == len(service.test_records) or record_index % 500 == 0:
             logger.info(
-                "Structured feature extraction progress: image=%s/%s class=%s",
+                "Structured and histogram feature extraction progress: image=%s/%s class=%s",
                 record_index,
                 len(service.test_records),
                 class_name,
             )
 
-    logger.info("Completed structured feature extraction")
-    return np.array(labels, dtype=object), np.vstack(feature_rows).astype(np.float32)
+    logger.info("Completed structured and histogram feature extraction")
+    return (
+        np.array(labels, dtype=object),
+        np.vstack(structured_rows).astype(np.float32),
+        np.vstack(histogram_rows).astype(np.float32),
+    )
 
 
 def _build_knn_estimator(params: dict[str, Any]) -> Pipeline:
@@ -838,11 +844,16 @@ async def run_development_evaluation(service: ImageVectorService) -> None:
         logger.warning("Skipping development evaluation because the fixed dataset is empty")
         return
 
-    logger.info("Stage 1/7: building structured features")
-    label_names, structured_features = _build_structured_features(service)
+    logger.info("Stage 1/7: building structured and histogram features")
+    label_names, structured_features, hist_features = _build_structured_and_histogram_features(service)
     label_encoder = LabelEncoder()
     encoded_labels = label_encoder.fit_transform(label_names)
-    logger.info("Structured features ready: feature_shape=%s class_count=%s", structured_features.shape, len(label_encoder.classes_))
+    logger.info(
+        "Structured and histogram features ready: structured_shape=%s hist_shape=%s class_count=%s",
+        structured_features.shape,
+        hist_features.shape,
+        len(label_encoder.classes_),
+    )
 
     logger.info("Stage 2/7: generating stratified train/validation/test split")
     split_indices = _build_stratified_split(encoded_labels, VECTOR_RANDOM_SEED)
@@ -853,18 +864,15 @@ async def run_development_evaluation(service: ImageVectorService) -> None:
     train_validation_indices = np.concatenate([train_indices, validation_indices])
     class_count = len(label_encoder.classes_)
 
-    if service.hist_index is None or service.hist_index.shape[0] < dataset_size:
-        logger.warning("Development evaluation detected an incomplete feature index; rebuilding before evaluation")
+    if service.cnn_index is None or service.cnn_index.shape[0] < dataset_size:
+        logger.warning("Development evaluation detected an incomplete CNN feature index; rebuilding before evaluation")
         await service.rebuild_index()
 
-    if service.hist_index is None or service.cnn_index is None or service.cnn_index.shape[0] < dataset_size:
-        raise RuntimeError("Feature indices are unavailable after rebuild in development mode.")
+    if service.cnn_index is None or service.cnn_index.shape[0] < dataset_size:
+        raise RuntimeError("CNN feature index is unavailable after rebuild in development mode.")
 
     logger.info("Stage 3/7: loading pretrained feature matrices from the rebuilt search index")
     pretrained_cnn_features = service.cnn_index[:dataset_size].astype(np.float32)
-
-    if service.hist_index is None:
-        raise RuntimeError("Color histogram index is unavailable after rebuild in development mode.")
 
     logger.info("Stage 4/7: fine-tuning ResNet-18 on the training split and extracting updated embeddings")
     finetuned_cnn_features, resnet_finetune_metadata = _fine_tune_resnet_and_extract_embeddings(
@@ -874,7 +882,6 @@ async def run_development_evaluation(service: ImageVectorService) -> None:
         validation_indices,
         class_count,
     )
-    hist_features = service.hist_index[:dataset_size].astype(np.float32)
     random_forest_features = np.hstack([hist_features, structured_features, finetuned_cnn_features]).astype(np.float32)
     random_forest_cnn_feature_start = hist_features.shape[1] + structured_features.shape[1]
     logger.info(

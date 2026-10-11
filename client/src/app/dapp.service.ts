@@ -7,7 +7,7 @@ import { WalletService } from './wallet.service';
 
 @Injectable({ providedIn: 'root' })
 export class DappService {
-  private static readonly MIN_PRIORITY_FEE_PER_GAS = 25_000_000_000n;
+  private static readonly MIN_PRIORITY_FEE_PER_GAS = 35_000_000_000n;
   private static readonly imageRegistryInterface = new Interface(imageRegistryAbi);
   private static readonly licensingAndPaymentInterface = new Interface(licensingAndPaymentAbi);
   private static readonly modelAndIndexAuditInterface = new Interface(modelAndIndexAuditAbi);
@@ -74,12 +74,10 @@ export class DappService {
     return { transactionHash: tx.hash, purchaseId };
   }
 
-  async setOracle(addresses: ContractAddresses, oracleAddress: string): Promise<string> {
-    const signer = await this.walletService.getSigner();
-    const contract = new Contract(addresses.licensingAndPayment, licensingAndPaymentAbi, signer);
-    const tx = await contract['setOracle'](oracleAddress.trim(), await this.getWriteOverrides(signer));
-    await tx.wait();
-    return tx.hash;
+  async hasPurchasedLicense(addresses: ContractAddresses, imageId: string, buyerAddress: string): Promise<boolean> {
+    const provider = this.walletService.getReadOnlyProvider();
+    const contract = new Contract(addresses.licensingAndPayment, licensingAndPaymentAbi, provider);
+    return await contract['hasPurchasedLicense'](BigInt(imageId), buyerAddress.trim());
   }
 
   async pauseLicensing(addresses: ContractAddresses): Promise<string> {
@@ -98,14 +96,6 @@ export class DappService {
     return tx.hash;
   }
 
-  async confirmDownloadAccess(addresses: ContractAddresses, purchaseId: string, accessProof: string): Promise<string> {
-    const signer = await this.walletService.getSigner();
-    const contract = new Contract(addresses.licensingAndPayment, licensingAndPaymentAbi, signer);
-    const tx = await contract['confirmDownloadAccess'](BigInt(purchaseId), this.normalizeHash(accessProof), await this.getWriteOverrides(signer));
-    await tx.wait();
-    return tx.hash;
-  }
-
   async withdrawPayments(addresses: ContractAddresses): Promise<string> {
     const signer = await this.walletService.getSigner();
     const contract = new Contract(addresses.licensingAndPayment, licensingAndPaymentAbi, signer);
@@ -114,18 +104,17 @@ export class DappService {
     return tx.hash;
   }
 
-  async getImageDetails(addresses: ContractAddresses, imageId: string, candidateHash: string) {
+  async getImageDetails(addresses: ContractAddresses, imageId: string) {
     const provider = this.walletService.getReadOnlyProvider();
     const registryContract = new Contract(addresses.imageRegistry, imageRegistryAbi, provider);
     const licensingContract = new Contract(addresses.licensingAndPayment, licensingAndPaymentAbi, provider);
     const normalizedImageId = BigInt(imageId);
-    const [image, licenseOffer, hashMatches] = await Promise.all([
+    const [image, licenseOffer] = await Promise.all([
       registryContract['getImage'](normalizedImageId),
       licensingContract['getLicenseOffer'](normalizedImageId),
-      candidateHash ? registryContract['verifyImageHash'](normalizedImageId, this.normalizeHash(candidateHash)) : Promise.resolve(null),
     ]);
 
-    return { image, licenseOffer, hashMatches };
+    return { image, licenseOffer };
   }
 
   async getCollectionDetails(addresses: ContractAddresses, collectionId: string) {
@@ -162,15 +151,19 @@ export class DappService {
     return await contract['paused']();
   }
 
-  async getSnapshotDetails(addresses: ContractAddresses, snapshotId: string, expectedModelHash: string, expectedIndexHash: string) {
+  async getSnapshotDetails(addresses: ContractAddresses) {
     const provider = this.walletService.getReadOnlyProvider();
     const contract = new Contract(addresses.modelAndIndexAudit, modelAndIndexAuditAbi, provider);
-    const snapshot = await contract['getSnapshot'](BigInt(snapshotId));
-    const isVerified = expectedModelHash && expectedIndexHash
-      ? await contract['verifySnapshot'](BigInt(snapshotId), this.normalizeHash(expectedModelHash), this.normalizeHash(expectedIndexHash))
-      : null;
+    const snapshots = await contract['getAllSnapshots']();
+    return { snapshots };
+  }
 
-    return { snapshot, isVerified };
+  async setAuditOwner(addresses: ContractAddresses, newOwner: string): Promise<string> {
+    const signer = await this.walletService.getSigner();
+    const contract = new Contract(addresses.modelAndIndexAudit, modelAndIndexAuditAbi, signer);
+    const transaction = await contract['setOwner'](newOwner.trim());
+    const receipt = await transaction.wait();
+    return receipt.hash;
   }
 
   formatError(error: unknown): string {
@@ -321,22 +314,20 @@ export class DappService {
         return `Only the collection creator can add images to collection ${this.stringifyErrorArg(args[0])}. Caller: ${this.stringifyErrorArg(args[1])}.`;
       case 'RegistryAddressIsZero':
         return 'The licensing contract registry address is zero.';
-      case 'OracleAddressIsZero':
-        return 'The oracle address cannot be zero.';
-      case 'CallerIsNotOracle':
-        return `Only the configured oracle can call this method. Caller: ${this.stringifyErrorArg(args[0])}.`;
       case 'CallerIsNotImageOwner':
         return `Only the current owner can manage image ${this.stringifyErrorArg(args[0])}. Caller: ${this.stringifyErrorArg(args[1])}.`;
       case 'LicenseOfferNotActive':
         return `The license offer for image ${this.stringifyErrorArg(args[0])} is not active.`;
+      case 'LicenseAlreadyPurchased':
+        return `Buyer ${this.stringifyErrorArg(args[1])} already owns a license for image ${this.stringifyErrorArg(args[0])}.`;
+      case 'CannotBuyOwnImage':
+        return `Buyer ${this.stringifyErrorArg(args[1])} cannot buy a license for owned image ${this.stringifyErrorArg(args[0])}.`;
       case 'IncorrectPaymentAmount':
         return `Incorrect payment amount. Expected ${this.stringifyErrorArg(args[0])} wei, received ${this.stringifyErrorArg(args[1])} wei.`;
       case 'OfferSellerIsOutdated':
         return `The stored seller for image ${this.stringifyErrorArg(args[0])} is outdated. Current owner: ${this.stringifyErrorArg(args[1])}, offer seller: ${this.stringifyErrorArg(args[2])}.`;
       case 'PurchaseDoesNotExist':
         return `Purchase ${this.stringifyErrorArg(args[0])} does not exist.`;
-      case 'AccessAlreadyConfirmed':
-        return `Download access for purchase ${this.stringifyErrorArg(args[0])} has already been confirmed.`;
       case 'NoFundsAvailable':
         return `No funds are available for withdrawal by ${this.stringifyErrorArg(args[0])}.`;
       case 'WithdrawalFailed':
@@ -355,6 +346,10 @@ export class DappService {
         return `Only the contract owner can call this method. Caller: ${this.stringifyErrorArg(args[0])}.`;
       case 'OwnableInvalidOwner':
         return `The owner address is invalid: ${this.stringifyErrorArg(args[0])}.`;
+      case 'EnforcedPause':
+        return 'This action is unavailable while the contract is paused.';
+      case 'ExpectedPause':
+        return 'This action requires the contract to be paused first.';
       case 'ReentrancyGuardReentrantCall':
         return 'This action was blocked by reentrancy protection.';
       case 'Error':
@@ -383,16 +378,17 @@ export class DappService {
   }
 
   private async getWriteOverrides(signer: Awaited<ReturnType<WalletService['getSigner']>>) {
-    const provider = signer.provider;
-    const latestBlock = provider ? await provider.getBlock('latest') : null;
-    const feeData = provider ? await provider.getFeeData() : null;
-    const priorityFeePerGas = DappService.MIN_PRIORITY_FEE_PER_GAS;
+    const provider = this.walletService.getReadOnlyProvider();
+    const latestBlock = await provider.getBlock('latest');
+    const feeData = await provider.getFeeData();
+    const suggestedPriorityFeePerGas = feeData?.maxPriorityFeePerGas ?? feeData?.gasPrice ?? 0n;
+    const priorityFeePerGas = suggestedPriorityFeePerGas > DappService.MIN_PRIORITY_FEE_PER_GAS
+      ? suggestedPriorityFeePerGas
+      : DappService.MIN_PRIORITY_FEE_PER_GAS;
     const baseFeePerGas = latestBlock?.baseFeePerGas ?? 0n;
-    const suggestedMaxFeePerGas = feeData?.maxFeePerGas ?? 0n;
-    const maxFeePerGas = [priorityFeePerGas, baseFeePerGas + priorityFeePerGas, suggestedMaxFeePerGas].reduce(
-      (currentMax, candidate) => candidate > currentMax ? candidate : currentMax,
-      0n,
-    );
+    const maxFeePerGas = baseFeePerGas > 0n
+      ? (baseFeePerGas * 2n) + priorityFeePerGas
+      : priorityFeePerGas;
 
     return {
       maxPriorityFeePerGas: priorityFeePerGas,

@@ -5,14 +5,14 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from .config import STORE_PATH
+from config import STORE_PATH
 
 
 def ensure_store() -> dict[str, Any]:
     if STORE_PATH.exists():
         return json.loads(STORE_PATH.read_text(encoding="utf-8"))
 
-    initial = {"assets": {}, "accessTokens": {}}
+    initial = {"assets": {}}
     STORE_PATH.write_text(json.dumps(initial, indent=2), encoding="utf-8")
     return initial
 

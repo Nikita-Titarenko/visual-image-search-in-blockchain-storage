@@ -12,9 +12,9 @@ OPENAPI_DIR = SERVICE_DIR / "openapi"
 
 
 def load_oracle_api_module():
-    if str(ROOT_DIR) not in sys.path:
-        sys.path.insert(0, str(ROOT_DIR))
-    return importlib.import_module("oracle.api")
+    if str(SERVICE_DIR) not in sys.path:
+        sys.path.insert(0, str(SERVICE_DIR))
+    return importlib.import_module("api")
 
 
 def load_openapi_spec() -> dict[str, object]:

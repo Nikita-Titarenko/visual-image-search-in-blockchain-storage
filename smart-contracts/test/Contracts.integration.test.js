@@ -8,34 +8,31 @@ function digest(label) {
 
 describe("Contract integration flows", function () {
   async function deployFixture() {
-    const [owner, seller, buyer, oracle, otherBuyer] = await ethers.getSigners();
+    const [owner, seller, buyer, otherBuyer] = await ethers.getSigners();
 
     const registryFactory = await ethers.getContractFactory("ImageRegistry");
     const registry = await registryFactory.deploy();
     await registry.waitForDeployment();
 
     const licensingFactory = await ethers.getContractFactory("LicensingAndPayment");
-    const licensing = await licensingFactory.deploy(await registry.getAddress(), owner.address, oracle.address);
+    const licensing = await licensingFactory.deploy(await registry.getAddress(), owner.address);
     await licensing.waitForDeployment();
 
     const auditFactory = await ethers.getContractFactory("ModelAndIndexAudit");
     const audit = await auditFactory.deploy(owner.address);
     await audit.waitForDeployment();
 
-    return { registry, licensing, audit, owner, seller, buyer, oracle, otherBuyer };
+    return { registry, licensing, audit, owner, seller, buyer, otherBuyer };
   }
 
   it("executes the end-to-end registry, licensing, and audit flow", async function () {
-    const { registry, licensing, audit, seller, buyer, oracle } = await loadFixture(deployFixture);
+    const { registry, licensing, audit, seller, buyer } = await loadFixture(deployFixture);
     await registry.connect(seller).registerCollection("Premium", "ipfs://premium");
     await registry.connect(seller).registerImage(digest("asset-1"), "ipfs://asset-1", 1n);
     await licensing.connect(seller).configureLicenseOffer(1n, ethers.parseEther("1"), "ipfs://terms", true);
 
     await expect(licensing.connect(buyer).buyLicense(1n, { value: ethers.parseEther("1") }))
       .to.emit(licensing, "LicensePurchased");
-
-    await expect(licensing.connect(oracle).confirmDownloadAccess(1n, digest("ticket-1")))
-      .to.emit(licensing, "DownloadAccessConfirmed");
 
     await expect(audit.recordSnapshot("resnet18", digest("model-1"), "hist-v1", digest("index-1"), "ipfs://audit"))
       .to.emit(audit, "AuditSnapshotRecorded");
@@ -58,7 +55,7 @@ describe("Contract integration flows", function () {
   });
 
   it("tracks timestamps across collection, image, purchase, and snapshot records", async function () {
-    const { registry, licensing, audit, seller, buyer, oracle } = await loadFixture(deployFixture);
+    const { registry, licensing, audit, seller, buyer } = await loadFixture(deployFixture);
 
     const collectionTimestamp = (await time.latest()) + 100;
     await time.setNextBlockTimestamp(collectionTimestamp);
@@ -81,14 +78,12 @@ describe("Contract integration flows", function () {
     const [collection] = await registry.getCollectionWithImages(1n);
     const image = await registry.getImage(1n);
     const purchase = await licensing.getPurchase(1n);
-    const snapshot = await audit.getSnapshot(1n);
+    const [snapshot] = await audit.getAllSnapshots();
 
     expect(collection.createdAt).to.equal(BigInt(collectionTimestamp));
     expect(image.registeredAt).to.equal(BigInt(imageTimestamp));
     expect(purchase.purchasedAt).to.equal(BigInt(purchaseTimestamp));
     expect(snapshot.recordedAt).to.equal(BigInt(snapshotTimestamp));
-
-    await licensing.connect(oracle).confirmDownloadAccess(1n, digest("ticket-2"));
   });
 
   it("keeps registry views consistent across collections and all-images listing", async function () {
@@ -106,21 +101,15 @@ describe("Contract integration flows", function () {
     expect(allImages.map((image) => image.id)).to.deep.equal([1n, 2n, 3n]);
   });
 
-  it("allows administrative oracle rotation during pause and uses the new oracle afterward", async function () {
-    const { registry, licensing, seller, buyer, owner, oracle, otherBuyer } = await loadFixture(deployFixture);
+  it("allows administrative pause and unpause around purchases", async function () {
+    const { registry, licensing, seller, buyer, owner, otherBuyer } = await loadFixture(deployFixture);
     await registry.connect(seller).registerImage(digest("asset-7"), "ipfs://asset-7", 0);
     await licensing.connect(seller).configureLicenseOffer(1n, ethers.parseEther("2"), "ipfs://terms-7", true);
     await licensing.connect(owner).pause();
-    await licensing.connect(owner).setOracle(otherBuyer.address);
     await licensing.connect(owner).unpause();
-    await licensing.connect(buyer).buyLicense(1n, { value: ethers.parseEther("2") });
 
-    await expect(licensing.connect(oracle).confirmDownloadAccess(1n, digest("old-oracle-proof")))
-      .to.be.revertedWithCustomError(licensing, "CallerIsNotOracle")
-      .withArgs(oracle.address);
-
-    await expect(licensing.connect(otherBuyer).confirmDownloadAccess(1n, digest("new-oracle-proof")))
-      .to.emit(licensing, "DownloadAccessConfirmed");
+    await expect(licensing.connect(buyer).buyLicense(1n, { value: ethers.parseEther("2") }))
+      .to.emit(licensing, "LicensePurchased");
   });
 
   it("records multiple snapshots and verifies each independently", async function () {

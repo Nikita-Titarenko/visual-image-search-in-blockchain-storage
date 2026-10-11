@@ -103,9 +103,9 @@
   },
   "openapi": "3.1.0",
   "paths": {
-    "/api/oracle/claim-access": {
+    "/api/oracle/download": {
       "post": {
-        "operationId": "claim_access_api_oracle_claim_access_post",
+        "operationId": "download_decrypted_file_api_oracle_download_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -116,57 +116,6 @@
           },
           "required": true
         },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Claim Access Api Oracle Claim Access Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Claim Access"
-      }
-    },
-    "/api/oracle/download/{purchase_id}": {
-      "get": {
-        "operationId": "download_decrypted_file_api_oracle_download__purchase_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "purchase_id",
-            "required": true,
-            "schema": {
-              "title": "Purchase Id",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "token",
-            "required": true,
-            "schema": {
-              "minLength": 20,
-              "title": "Token",
-              "type": "string"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -239,14 +188,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "boolean"
-                      }
-                    ]
+                    "type": "boolean"
                   },
                   "title": "Response Health Api Oracle Health Get",
                   "type": "object"

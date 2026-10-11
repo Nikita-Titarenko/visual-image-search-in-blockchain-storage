@@ -43,7 +43,7 @@ def load_audit_metadata() -> dict[str, Any]:
 
 
 def _get_audit_signer_private_key() -> str:
-    value = os.getenv("AUDIT_PRIVATE_KEY", "").strip() or require_env("DEPLOYER_PRIVATE_KEY")
+    value = os.getenv("AUDIT_PRIVATE_KEY", "").strip()
     return value if value.startswith("0x") else f"0x{value}"
 
 
@@ -99,7 +99,7 @@ async def ensure_audit_snapshot(
         "indexHash": index_hash,
         "datasetSize": dataset_size,
     }
-    metadata_uri = f"{VECTOR_PUBLIC_BASE_URL}/api/vector/audit-metadata"
+    metadata_uri = VECTOR_PUBLIC_BASE_URL
 
     w3, signer, contract = _load_audit_contract()
     nonce = w3.eth.get_transaction_count(signer.address, "pending")

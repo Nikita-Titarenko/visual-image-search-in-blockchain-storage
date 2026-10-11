@@ -14,24 +14,8 @@ function getConfiguredAddress(envName) {
   return value;
 }
 
-function getOracleAddress(deployerAddress) {
-  const configuredOracleAddress = getConfiguredAddress("ORACLE_ADDRESS");
-  if (configuredOracleAddress) {
-    return configuredOracleAddress;
-  }
-
-  const oraclePrivateKey = process.env.ORACLE_PRIVATE_KEY?.trim();
-  if (oraclePrivateKey) {
-    const normalizedPrivateKey = oraclePrivateKey.startsWith("0x") ? oraclePrivateKey : `0x${oraclePrivateKey}`;
-    return new hre.ethers.Wallet(normalizedPrivateKey).address;
-  }
-
-  return deployerAddress;
-}
-
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
-  const oracleAddress = getOracleAddress(deployer.address);
 
   const configuredImageRegistryAddress = getConfiguredAddress("IMAGE_REGISTRY_ADDRESS");
   const configuredLicensingAddress = getConfiguredAddress("LICENSING_AND_PAYMENT_ADDRESS");
@@ -57,8 +41,7 @@ async function main() {
     const LicensingAndPayment = await hre.ethers.getContractFactory("LicensingAndPayment");
     const licensingAndPayment = await LicensingAndPayment.deploy(
       imageRegistryAddress,
-      deployer.address,
-      oracleAddress
+      deployer.address
     );
     await licensingAndPayment.waitForDeployment();
     licensingAndPaymentAddress = await licensingAndPayment.getAddress();
@@ -84,7 +67,7 @@ async function main() {
 
   await verifyOnExplorer({
     address: licensingAndPaymentAddress,
-    constructorArgs: [imageRegistryAddress, deployer.address, oracleAddress],
+    constructorArgs: [imageRegistryAddress, deployer.address],
     label: "LicensingAndPayment",
     contract: "contracts/LicensingAndPayment.sol:LicensingAndPayment",
   });
@@ -100,7 +83,6 @@ async function main() {
   console.log("ImageRegistry:", imageRegistryAddress);
   console.log("LicensingAndPayment:", licensingAndPaymentAddress);
   console.log("ModelAndIndexAudit:", modelAndIndexAuditAddress);
-  console.log("Oracle:", oracleAddress);
 }
 
 main().catch((error) => {

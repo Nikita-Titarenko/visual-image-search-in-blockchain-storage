@@ -7,10 +7,9 @@ from typing import TYPE_CHECKING, AsyncIterator
 from fastapi import FastAPI, File, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from audit import load_audit_metadata
 from config import VECTOR_ALLOWED_ORIGINS, VECTOR_TOP_K_DEFAULT
 from logger import get_logger
-from models import AuditStatusResponse, SearchResponse
+from models import SearchResponse
 
 
 if TYPE_CHECKING:
@@ -94,25 +93,6 @@ def create_app(
     ) -> SearchResponse:
         logger.info("Search request received: file=%s top_k=%s", file.filename, top_k)
         return await get_service().search(file, top_k)
-
-    @app.get("/api/vector/audit-status", response_model=AuditStatusResponse)
-    def audit_status(snapshot_id: int | None = Query(default=None, ge=1)) -> AuditStatusResponse:
-        logger.info("Audit status requested: snapshot_id=%s", snapshot_id)
-        return get_service().audit_status(snapshot_id)
-
-    @app.get("/api/vector/audit-metadata")
-    def audit_metadata() -> dict[str, object]:
-        logger.info("Audit metadata requested")
-        return load_audit_metadata()
-
-    @app.post("/api/vector/rebuild-index", response_model=AuditStatusResponse)
-    async def rebuild_index() -> AuditStatusResponse:
-        logger.info("Rebuild index endpoint triggered")
-        runtime_service = get_service()
-        await runtime_service.rebuild_index()
-        await runtime_service.initialize()
-        logger.info("Rebuild index endpoint completed")
-        return runtime_service.audit_status()
 
     return app
 

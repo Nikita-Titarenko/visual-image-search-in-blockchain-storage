@@ -16,7 +16,7 @@ from utils import ensure_directory, read_json, write_json
 
 
 logger = get_logger()
-ALCHEMY_FREE_TIER_LOG_RANGE = 11
+ALCHEMY_FREE_TIER_LOG_RANGE = 10
 LOG_REQUEST_DELAY_SECONDS = 0.35
 LOG_REQUEST_MAX_ATTEMPTS = 5
 LOG_REQUEST_BACKOFF_BASE_SECONDS = 1.0
@@ -339,7 +339,7 @@ async def _sync_registered_images_from_registry(records_by_image_id: dict[int, D
             metadata_uri=str(asset["metadataURI"]),
             collection_id=str(asset["collectionId"]),
             content_hash=Web3.to_hex(asset["contentHash"]),
-            creator_wallet=str(asset["creator"]),
+            creator_wallet=str(asset["currentOwner"]),
         )
         if record is None:
             continue

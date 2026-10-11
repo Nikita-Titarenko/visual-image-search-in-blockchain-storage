@@ -67,9 +67,9 @@ def _save_learning_curve_plot(destination: Path, epoch_history: list[dict[str, f
 def _save_confusion_matrix_plot(destination: Path, matrix: np.ndarray, class_names: np.ndarray) -> None:
     class_count = len(class_names)
     figure, axis = plt.subplots(figsize=(max(18, class_count * 0.22), max(16, class_count * 0.22)))
-    image = axis.imshow(matrix, interpolation="nearest", cmap="Blues")
+    image = axis.imshow(matrix, interpolation="nearest", cmap="Blues", vmin=0.0, vmax=1.0)
     figure.colorbar(image, ax=axis, fraction=0.02, pad=0.02)
-    axis.set_title("Fine-tuned ResNet-18 retrieval confusion matrix")
+    axis.set_title("Fine-tuned ResNet-18 normalized retrieval confusion matrix")
     axis.set_xlabel("Predicted class")
     axis.set_ylabel("True class")
     ticks = np.arange(class_count)
@@ -246,6 +246,7 @@ def generate_development_plots(
         encoded_test_labels,
         fine_tuned_plot_context["retrieval"]["predictions"],
         labels=np.arange(class_count),
+        normalize="true",
     )
 
     permutation_sample_indices = test_indices

@@ -20,6 +20,16 @@ describe("ModelAndIndexAudit", function () {
     expect(await audit.owner()).to.equal(owner.address);
   });
 
+  it("allows the owner to assign a new owner", async function () {
+    const { audit, owner, outsider } = await loadFixture(deployFixture);
+
+    await expect(audit.connect(owner).setOwner(outsider.address))
+      .to.emit(audit, "OwnershipTransferred")
+      .withArgs(owner.address, outsider.address);
+
+    expect(await audit.owner()).to.equal(outsider.address);
+  });
+
   it("records a snapshot, emits an event, and stores the timestamp", async function () {
     const { audit, owner } = await loadFixture(deployFixture);
     const modelHash = digest("model-v1");
@@ -31,7 +41,7 @@ describe("ModelAndIndexAudit", function () {
       .to.emit(audit, "AuditSnapshotRecorded")
       .withArgs(1n, "model-v1", modelHash, "index-v1", indexHash, "ipfs://audit-1", owner.address);
 
-    const snapshot = await audit.getSnapshot(1n);
+    const [snapshot] = await audit.getAllSnapshots();
     expect(snapshot.id).to.equal(1n);
     expect(snapshot.modelVersion).to.equal("model-v1");
     expect(snapshot.modelHash).to.equal(modelHash);
@@ -47,8 +57,8 @@ describe("ModelAndIndexAudit", function () {
     await audit.connect(owner).recordSnapshot("m1", digest("m1"), "i1", digest("i1"), "ipfs://1");
     await audit.connect(owner).recordSnapshot("m2", digest("m2"), "i2", digest("i2"), "ipfs://2");
 
-    expect((await audit.getSnapshot(1n)).id).to.equal(1n);
-    expect((await audit.getSnapshot(2n)).id).to.equal(2n);
+    const snapshots = await audit.getAllSnapshots();
+    expect(snapshots.map((snapshot) => snapshot.id)).to.deep.equal([2n, 1n]);
   });
 
   it("restricts recordSnapshot to the owner", async function () {
@@ -82,11 +92,21 @@ describe("ModelAndIndexAudit", function () {
       .to.be.revertedWithCustomError(audit, "EmptyIndexHash");
   });
 
-  it("reverts getSnapshot for missing ids", async function () {
+  it("returns an empty array when no snapshots exist", async function () {
     const { audit } = await loadFixture(deployFixture);
-    await expect(audit.getSnapshot(12n))
-      .to.be.revertedWithCustomError(audit, "SnapshotDoesNotExist")
-      .withArgs(12n);
+    expect(await audit.getAllSnapshots()).to.deep.equal([]);
+  });
+
+  it("returns all snapshots from newest to oldest", async function () {
+    const { audit } = await loadFixture(deployFixture);
+    await audit.recordSnapshot("m1", digest("m1"), "i1", digest("i1"), "ipfs://1");
+    await audit.recordSnapshot("m2", digest("m2"), "i2", digest("i2"), "ipfs://2");
+    await audit.recordSnapshot("m3", digest("m3"), "i3", digest("i3"), "ipfs://3");
+
+    const snapshots = await audit.getAllSnapshots();
+
+    expect(snapshots.map((snapshot) => snapshot.id)).to.deep.equal([3n, 2n, 1n]);
+    expect(snapshots.map((snapshot) => snapshot.metadataURI)).to.deep.equal(["ipfs://3", "ipfs://2", "ipfs://1"]);
   });
 
   it("verifies exact snapshot hashes", async function () {

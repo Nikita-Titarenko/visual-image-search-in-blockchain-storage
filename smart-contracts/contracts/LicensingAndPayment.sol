@@ -9,15 +9,14 @@ import "./interfaces/IImageRegistry.sol";
 
 contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
     error RegistryAddressIsZero();
-    error OracleAddressIsZero();
-    error CallerIsNotOracle(address caller);
     error ImageNotRegistered(uint256 imageId);
     error CallerIsNotImageOwner(uint256 imageId, address caller);
     error LicenseOfferNotActive(uint256 imageId);
+    error LicenseAlreadyPurchased(uint256 imageId, address buyer);
+    error CannotBuyOwnImage(uint256 imageId, address buyer);
     error IncorrectPaymentAmount(uint256 expected, uint256 actual);
     error OfferSellerIsOutdated(uint256 imageId, address expectedSeller, address actualSeller);
     error PurchaseDoesNotExist(uint256 purchaseId);
-    error AccessAlreadyConfirmed(uint256 purchaseId);
     error NoFundsAvailable(address account);
     error WithdrawalFailed(address payee, uint256 amount);
 
@@ -33,7 +32,6 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
         address buyer;
         address seller;
         uint256 paidAmount;
-        bytes32 accessProof;
         uint64 purchasedAt;
     }
 
@@ -51,12 +49,10 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
         address buyer;
         address seller;
         uint256 paidAmount;
-        bytes32 accessProof;
         uint64 purchasedAt;
     }
 
     IImageRegistry public immutable imageRegistry;
-    address public oracle;
     uint256 private _nextPurchaseId = 1;
 
     mapping(uint256 => LicenseOffer) private _offersByImage;
@@ -66,45 +62,19 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
     mapping(uint256 => mapping(address => bool)) private _hasLicenseForImage;
     mapping(address => uint256) public pendingWithdrawals;
 
-    event OracleUpdated(address indexed previousOracle, address indexed newOracle);
     event LicenseOfferConfigured(uint256 indexed imageId, address indexed seller, uint256 priceWei, string termsURI, bool active);
     event LicensePurchased(uint256 indexed purchaseId, uint256 indexed imageId, address indexed buyer, address seller, uint256 paidAmount);
-    event DownloadAccessConfirmed(uint256 indexed purchaseId, address indexed oracle, bytes32 accessProof);
     event Withdrawal(address indexed payee, uint256 amount);
 
     /// @notice Creates the licensing contract and binds it to an image registry.
     /// @param registryAddress The image registry contract used for ownership checks.
     /// @param initialOwner The address that receives the Ownable administrator role.
-    /// @param initialOracle The oracle address allowed to confirm download access.
-    constructor(address registryAddress, address initialOwner, address initialOracle) Ownable(initialOwner) {
+    constructor(address registryAddress, address initialOwner) Ownable(initialOwner) {
         if (registryAddress == address(0)) {
             revert RegistryAddressIsZero();
         }
-        if (initialOracle == address(0)) {
-            revert OracleAddressIsZero();
-        }
 
         imageRegistry = IImageRegistry(registryAddress);
-        oracle = initialOracle;
-    }
-
-    modifier onlyOracle() {
-        if (msg.sender != oracle) {
-            revert CallerIsNotOracle(msg.sender);
-        }
-        _;
-    }
-
-    /// @notice Updates the oracle account that can confirm download access.
-    /// @param newOracle The new oracle address.
-    function setOracle(address newOracle) external onlyOwner {
-        if (newOracle == address(0)) {
-            revert OracleAddressIsZero();
-        }
-
-        address previousOracle = oracle;
-        oracle = newOracle;
-        emit OracleUpdated(previousOracle, newOracle);
     }
 
     /// @notice Pauses user-facing licensing operations.
@@ -154,6 +124,9 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
         if (!offer.active) {
             revert LicenseOfferNotActive(imageId);
         }
+        if (_hasLicenseForImage[imageId][msg.sender]) {
+            revert LicenseAlreadyPurchased(imageId, msg.sender);
+        }
         if (msg.value != offer.priceWei) {
             revert IncorrectPaymentAmount(offer.priceWei, msg.value);
         }
@@ -162,6 +135,9 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
         if (offer.seller != currentOwner) {
             revert OfferSellerIsOutdated(imageId, currentOwner, offer.seller);
         }
+        if (currentOwner == msg.sender) {
+            revert CannotBuyOwnImage(imageId, msg.sender);
+        }
 
         purchaseId = _nextPurchaseId++;
         _purchasesById[purchaseId] = LicensePurchase({
@@ -169,7 +145,6 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
             buyer: msg.sender,
             seller: offer.seller,
             paidAmount: msg.value,
-            accessProof: bytes32(0),
             purchasedAt: uint64(block.timestamp)
         });
 
@@ -179,23 +154,6 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
         pendingWithdrawals[offer.seller] += msg.value;
 
         emit LicensePurchased(purchaseId, imageId, msg.sender, offer.seller, msg.value);
-    }
-
-    /// @notice Stores oracle confirmation that a purchased file can be downloaded.
-    /// @param purchaseId The purchase identifier to confirm.
-    /// @param accessProof A proof or ticket hash associated with the download authorization.
-    function confirmDownloadAccess(uint256 purchaseId, bytes32 accessProof) external onlyOracle whenNotPaused {
-        LicensePurchase storage purchase = _purchasesById[purchaseId];
-        if (purchase.buyer == address(0)) {
-            revert PurchaseDoesNotExist(purchaseId);
-        }
-        if (purchase.accessProof != bytes32(0)) {
-            revert AccessAlreadyConfirmed(purchaseId);
-        }
-
-        purchase.accessProof = accessProof;
-
-        emit DownloadAccessConfirmed(purchaseId, msg.sender, accessProof);
     }
 
     /// @notice Withdraws pending license revenue for the caller.
@@ -279,7 +237,6 @@ contract LicensingAndPayment is Ownable, Pausable, ReentrancyGuard {
             buyer: purchase.buyer,
             seller: purchase.seller,
             paidAmount: purchase.paidAmount,
-            accessProof: purchase.accessProof,
             purchasedAt: purchase.purchasedAt
         });
     }

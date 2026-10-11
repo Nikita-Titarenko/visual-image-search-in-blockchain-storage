@@ -1,66 +1,6 @@
 {
   "components": {
     "schemas": {
-      "AuditStatusResponse": {
-        "properties": {
-          "datasetSize": {
-            "title": "Datasetsize",
-            "type": "integer"
-          },
-          "indexHash": {
-            "title": "Indexhash",
-            "type": "string"
-          },
-          "indexVersion": {
-            "title": "Indexversion",
-            "type": "string"
-          },
-          "metadata": {
-            "additionalProperties": true,
-            "title": "Metadata",
-            "type": "object"
-          },
-          "modelHash": {
-            "title": "Modelhash",
-            "type": "string"
-          },
-          "modelVersion": {
-            "title": "Modelversion",
-            "type": "string"
-          },
-          "onChainMatch": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Onchainmatch"
-          },
-          "snapshotId": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Snapshotid"
-          }
-        },
-        "required": [
-          "modelVersion",
-          "modelHash",
-          "indexVersion",
-          "indexHash",
-          "datasetSize"
-        ],
-        "title": "AuditStatusResponse",
-        "type": "object"
-      },
       "Body_search_similar_images_api_vector_search_post": {
         "properties": {
           "file": {
@@ -228,73 +168,6 @@
   },
   "openapi": "3.1.0",
   "paths": {
-    "/api/vector/audit-metadata": {
-      "get": {
-        "operationId": "audit_metadata_api_vector_audit_metadata_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Audit Metadata Api Vector Audit Metadata Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Audit Metadata"
-      }
-    },
-    "/api/vector/audit-status": {
-      "get": {
-        "operationId": "audit_status_api_vector_audit_status_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "snapshot_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Snapshot Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuditStatusResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Audit Status"
-      }
-    },
     "/api/vector/health": {
       "get": {
         "operationId": "health_api_vector_health_get",
@@ -325,24 +198,6 @@
           }
         },
         "summary": "Health"
-      }
-    },
-    "/api/vector/rebuild-index": {
-      "post": {
-        "operationId": "rebuild_index_api_vector_rebuild_index_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuditStatusResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Rebuild Index"
       }
     },
     "/api/vector/search": {

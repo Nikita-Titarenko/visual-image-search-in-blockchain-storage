@@ -9,7 +9,7 @@ The blockchain side is built with Hardhat and Solidity and includes three contra
 
 The frontend lives in the `client` folder and provides a full wallet-driven flow: connect MetaMask, switch to Polygon Amoy, register collections and images, configure license offers, buy licenses, confirm access, and inspect audit snapshots.
 
-The repository now also includes a separate FastAPI oracle service in `oracle/` that encrypts original image files before they are pinned to IPFS, validates purchases on-chain, confirms access in `LicensingAndPayment`, and issues short-lived download tokens for decrypted delivery.
+The repository now also includes a separate FastAPI image access service in `image-access-service/` that encrypts original image files before they are pinned to IPFS, validates purchases on-chain, and issues short-lived download tokens for decrypted delivery.
 
 The repository also includes a second FastAPI service in `image-vector-service/` that bootstraps the Caltech-101 dataset into Pinata on first run, builds CNN and color-histogram features, and returns the 10 nearest images for a query image while exposing model/index audit hashes for on-chain verification.
 
@@ -21,7 +21,7 @@ The repository also includes a Python dataset analysis module in `dataset_analys
 - `smart-contracts/scripts/deploy.js` deployment script for all contracts.
 - `smart-contracts/hardhat.config.js` Hardhat configuration for local, Polygon Amoy, and Polygon mainnet networks.
 - `client/` Angular application with wallet and contract integration.
-- `oracle/` FastAPI oracle service for encrypted uploads and token-based download access.
+- `image-access-service/` FastAPI image access service for encrypted uploads and token-based download access.
 - `image-vector-service/` FastAPI visual search service backed by Pinata, CNN embeddings, color histograms, and audit hashes.
 
 ## Install Dependencies
@@ -44,10 +44,10 @@ Install Python dependencies for dataset analysis:
 pip install kagglehub matplotlib pandas pillow numpy
 ```
 
-Install Python dependencies for the FastAPI oracle:
+Install Python dependencies for the image access service:
 
 ```bash
-pip install -r oracle/requirements.txt
+pip install -r image-access-service/requirements.txt
 ```
 
 Install Python dependencies for the Pinata proxy:
@@ -65,9 +65,9 @@ pip install -r image-vector-service/requirements.txt
 Recommended Windows setup with separate virtual environments:
 
 ```bash
-python -m venv oracle/.venv
-oracle/.venv/Scripts/python.exe -m pip install -r oracle/requirements.txt
-oracle/.venv/Scripts/python.exe -m pip install -r pinata-proxy/requirements.txt
+python -m venv image-access-service/.venv
+image-access-service/.venv/Scripts/python.exe -m pip install -r image-access-service/requirements.txt
+image-access-service/.venv/Scripts/python.exe -m pip install -r pinata-proxy/requirements.txt
 
 python -m venv image-vector-service/.venv
 image-vector-service/.venv/Scripts/python.exe -m pip install -r image-vector-service/requirements.txt
@@ -117,8 +117,6 @@ npx --prefix smart-contracts hardhat run smart-contracts/scripts/deploy.js --con
 
 After deployment, either copy the deployed contract addresses into `client/src/app/contracts.config.ts` or paste them into the UI fields before you interact with the contracts.
 
-Set `ORACLE_ADDRESS` before deployment if the `LicensingAndPayment` contract should trust a dedicated oracle wallet instead of the deployer wallet.
-
 The image vector service reads `MODEL_AND_INDEX_AUDIT_ADDRESS`, `POLYGON_AMOY_RPC_URL`, and `PINATA_JWT` so it can verify its local model/index hashes against the on-chain audit contract and mirror the dataset into Pinata.
 
 ## Run the Angular Client
@@ -129,7 +127,7 @@ Start the Pinata upload proxy first:
 python pinata-proxy/pinata_proxy.py
 ```
 
-To start the Pinata proxy, oracle, image vector service, and Angular web client together from the repository root, run:
+To start the Pinata proxy, image access service, image vector service, and Angular web client together from the repository root, run:
 
 ```bash
 .\start-services.sh
@@ -138,7 +136,7 @@ To start the Pinata proxy, oracle, image vector service, and Angular web client 
 The script expects these interpreters to exist:
 
 ```bash
-oracle/.venv/Scripts/python.exe
+image-access-service/.venv/Scripts/python.exe
 image-vector-service/.venv/Scripts/python.exe
 ```
 
@@ -148,10 +146,10 @@ Equivalent direct command:
 python pinata-proxy/pinata_proxy.py
 ```
 
-Start the FastAPI oracle service:
+Start the FastAPI image access service:
 
 ```bash
-uvicorn oracle.main:app --host 0.0.0.0 --port 8000
+uvicorn main:app --app-dir image-access-service --host 0.0.0.0 --port 8000
 ```
 
 Start the image vector service:
@@ -232,6 +230,12 @@ Run Angular tests:
 npm --prefix client test
 ```
 
+Run the image access service tests and image vector service tests in parallel on Windows PowerShell:
+
+```powershell
+$access = Start-Process -FilePath "image-access-service/.venv/Scripts/python.exe" -ArgumentList "-m", "unittest", "discover", "-s", "image-access-service/tests", "-p", "test_*.py" -NoNewWindow -PassThru; $vector = Start-Process -FilePath "image-vector-service/.venv/Scripts/python.exe" -ArgumentList "-m", "unittest", "discover", "-s", "image-vector-service/tests", "-p", "test_*.py" -NoNewWindow -PassThru; $access.WaitForExit(); $vector.WaitForExit(); if ($access.ExitCode -ne 0 -or $vector.ExitCode -ne 0) { }
+```
+
 ## Useful Commands
 
 Clean Hardhat artifacts and cache:
@@ -269,5 +273,3 @@ uvicorn main:app --app-dir image-vector-service --host 0.0.0.0 --port 8010
 ## Image Vector Service API
 
 - `POST /api/vector/search`: accepts an image file and returns the nearest dataset images from Pinata; use `method=cnn` for ResNet18 embeddings or `method=histogram` for the baseline color-histogram search.
-- `GET /api/vector/audit-status`: returns the current model hash and index hash, and can optionally verify them against an on-chain `ModelAndIndexAudit` snapshot via `snapshot_id`.
-- `POST /api/vector/rebuild-index`: rebuilds the local feature index from the Pinata-backed dataset mirror.

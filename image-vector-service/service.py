@@ -121,11 +121,17 @@ class ImageVectorService:
                 self.logger.info("ImageRegistered event for image %s already exists, skipping duplicate insert", record.image_id)
                 return False
 
+            index_mismatch_before_append = (
+                self.cnn_index is not None
+                and self.hist_index is not None
+                and not self._index_matches_corpus()
+            )
             self.records.append(record)
             self.records.sort(key=lambda item: item.image_id)
 
-            if self.cnn_index is not None and self.hist_index is not None and not self._index_matches_corpus():
+            if index_mismatch_before_append:
                 self.logger.warning("Event listener detected an index/manifest mismatch before append; rebuilding full index")
+                save_manifest(self.records)
                 await self.rebuild_index()
             else:
                 await self._append_records_to_index([record])

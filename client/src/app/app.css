@@ -201,6 +201,7 @@ label span {
 .inline-activity-panel {
 	display: grid;
 	gap: 6px;
+	grid-column: 1 / -1;
 	max-width: 760px;
 	padding: 18px 22px;
 	border-width: 1px;

@@ -12,12 +12,12 @@ if [[ "$VECTOR_MODE" != "production" && "$VECTOR_MODE" != "development" ]]; then
   exit 1
 fi
 
-ORACLE_PYTHON_BIN="$ROOT_DIR/oracle/.venv/Scripts/python.exe"
+IMAGE_ACCESS_PYTHON_BIN="$ROOT_DIR/image-access-service/.venv/Scripts/python.exe"
 VECTOR_PYTHON_BIN="$ROOT_DIR/image-vector-service/.venv/Scripts/python.exe"
 
-if [[ ! -x "$ORACLE_PYTHON_BIN" ]]; then
-  echo "Oracle Python interpreter not found at $ORACLE_PYTHON_BIN"
-  echo "Create oracle/.venv and install oracle and pinata-proxy dependencies first."
+if [[ ! -x "$IMAGE_ACCESS_PYTHON_BIN" ]]; then
+  echo "Image access service Python interpreter not found at $IMAGE_ACCESS_PYTHON_BIN"
+  echo "Create image-access-service/.venv and install image-access-service and pinata-proxy dependencies first."
   exit 1
 fi
 
@@ -66,8 +66,8 @@ start_service() {
   echo "$name started with PID $pid"
 }
 
-start_service "Pinata proxy" "$ORACLE_PYTHON_BIN" pinata-proxy/pinata_proxy.py
-start_service "Oracle" "$ORACLE_PYTHON_BIN" -m uvicorn oracle.main:app --host 0.0.0.0 --port 8000
+start_service "Pinata proxy" "$IMAGE_ACCESS_PYTHON_BIN" pinata-proxy/pinata_proxy.py
+start_service "Image access service" "$IMAGE_ACCESS_PYTHON_BIN" -m uvicorn main:app --app-dir image-access-service --host 0.0.0.0 --port 8000
 start_service "Image vector service" "$VECTOR_PYTHON_BIN" image-vector-service/main.py "$VECTOR_MODE"
 start_service "Angular web client" "${NPM_CMD[@]}" --prefix client start
 

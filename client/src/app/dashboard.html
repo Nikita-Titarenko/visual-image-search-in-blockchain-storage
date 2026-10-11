@@ -5,7 +5,7 @@
       <h1>{{ appTitle() }}</h1>
       <p class="hero-copy">
         Connect a browser wallet, point the UI at deployed contract addresses, then walk through image
-        registration, licensing, oracle confirmation, and audit snapshot recording.
+        registration, licensing, protected download access, and audit snapshot recording.
       </p>
     </div>
 
@@ -121,7 +121,7 @@
       <p>The uploaded original is encrypted by default before it is pinned to IPFS.</p>
       <label>
         <span>Content hash</span>
-        <input [(ngModel)]="imageHashInput" name="imageHashInput" placeholder="0x... or plain text to hash" />
+        <input [(ngModel)]="imageHashInput" name="imageHashInput" placeholder="Calculated from the selected file" readonly />
       </label>
       <label>
         <span>Image name</span>
@@ -185,12 +185,8 @@
         <span>Purchase ID</span>
         <input [(ngModel)]="oraclePurchaseId" name="oraclePurchaseId" />
       </label>
-      <div class="address-field">
-        <span>Access token expiry</span>
-        <strong>{{ oracleTokenExpiry() || 'Issued after oracle verification' }}</strong>
-      </div>
-      <button type="button" class="primary-button" (click)="claimEncryptedAccess()">Verify payment and issue access token</button>
-      <button type="button" class="secondary-button" (click)="downloadPurchasedImage()">Download decrypted original</button>
+      <p>Signs the purchase claim, verifies it on the access service, and immediately downloads the decrypted original.</p>
+      <button type="button" class="primary-button" (click)="downloadPurchasedImage()">Download decrypted original</button>
     </article>
     }
 
@@ -232,15 +228,15 @@
     </article>
     }
 
-    @if (activeFormTab() === 'set-oracle') {
+    @if (activeFormTab() === 'audit-owner') {
     <article class="panel form-panel">
-      <h2>6. Set oracle</h2>
+      <h2>6. Update audit owner</h2>
+      <p>Only the current owner can transfer `ModelAndIndexAudit` ownership to another address.</p>
       <label>
-        <span>New oracle address</span>
-        <input [(ngModel)]="licensingOracleAddress" name="licensingOracleAddress" placeholder="0x..." />
+        <span>New owner address</span>
+        <input [(ngModel)]="auditOwnerAddress" name="auditOwnerAddress" placeholder="0x..." />
       </label>
-      <p>Update the oracle address on LicensingAndPayment from the contract owner wallet.</p>
-      <button type="button" class="primary-button" (click)="updateLicensingOracle()">Set oracle</button>
+      <button type="button" class="primary-button" (click)="setAuditOwner()">Set audit owner</button>
     </article>
     }
 
@@ -251,7 +247,7 @@
         <span>Current contract status</span>
         <strong>{{ licensingPaused() === null ? 'Unknown' : (licensingPaused() ? 'Paused' : 'Active') }}</strong>
       </div>
-      <p>Only the contract owner can pause or unpause LicensingAndPayment. Administrative functions like setOracle remain available while paused.</p>
+      <p>Only the contract owner can pause or unpause LicensingAndPayment.</p>
       <div class="hero-actions admin-actions">
         <button type="button" class="secondary-button" (click)="loadLicensingPauseStatus()">Refresh status</button>
         <button type="button" class="primary-button" (click)="pauseLicensing()">Pause contract</button>
@@ -285,6 +281,18 @@
   </section>
 
   <section class="workspace-grid">
+    @if (lastActivity(); as activity) {
+    <article
+      class="panel inline-activity-panel"
+      [class.inline-activity-processing]="activity.state === 'processing'"
+      [class.inline-activity-success]="activity.state === 'success'"
+      [class.inline-activity-error]="activity.state === 'error'"
+    >
+      <span class="inline-activity-label">Last activity</span>
+      <strong>{{ activity.message }}</strong>
+    </article>
+    }
+
     @if (activeInspectTab() === 'collection') {
     <article class="panel">
       <h2>Inspect collection</h2>
@@ -302,10 +310,6 @@
       <label>
         <span>Image ID</span>
         <input [(ngModel)]="inspectImageId" name="inspectImageId" />
-      </label>
-      <label>
-        <span>Candidate hash</span>
-        <input [(ngModel)]="inspectCandidateHash" name="inspectCandidateHash" placeholder="0x... or plain text" />
       </label>
       <button type="button" class="secondary-button" (click)="inspectImage()">Load image details</button>
 
@@ -326,7 +330,7 @@
         <span>Terms URI</span>
         <strong>{{ offer.hasOffer ? (offer.termsUri || 'Empty terms URI') : 'No license offer' }}</strong>
       </div>
-      <button type="button" class="primary-button" [disabled]="!offer.hasOffer || !offer.active" (click)="buyLicense()">Purchase</button>
+      <button type="button" class="primary-button" (click)="buyLicense()">Purchase</button>
       }
     </article>
     }
@@ -360,12 +364,9 @@
 
     @if (activeInspectTab() === 'snapshot') {
     <article class="panel">
-      <h2>Inspect audit snapshot</h2>
-      <label>
-        <span>Snapshot ID</span>
-        <input [(ngModel)]="inspectSnapshotId" name="inspectSnapshotId" />
-      </label>
-      <button type="button" class="secondary-button" (click)="inspectSnapshot()">Load snapshot</button>
+      <h2>Inspect audit snapshots</h2>
+      <p>Loads all audit snapshots from newest to oldest.</p>
+      <button type="button" class="secondary-button" (click)="inspectSnapshot()">Load snapshots</button>
     </article>
     }
 

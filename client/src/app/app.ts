@@ -23,7 +23,7 @@ export class App {
     { id: 'license', label: '3. License' },
     { id: 'oracle', label: '4. Oracle' },
     { id: 'search', label: '5. Search' },
-    { id: 'set-oracle', label: '6. Set Oracle' },
+    { id: 'audit-owner', label: '6. Audit Owner' },
     { id: 'pause-licensing', label: '7. Pause Licensing' },
     { id: 'withdraw-payments', label: '8. Withdraw Payments' },
   ] as const;
@@ -33,7 +33,7 @@ export class App {
     { id: 'purchase', label: 'Inspect Purchase' },
     { id: 'my-purchases', label: 'My Purchases' },
     { id: 'my-sales', label: 'My Sales' },
-    { id: 'snapshot', label: 'Inspect Snapshot' },
+    { id: 'snapshot', label: 'Inspect Snapshots' },
   ] as const;
   protected readonly walletService = inject(WalletService);
   private readonly dappService = inject(DappService);
@@ -51,9 +51,6 @@ export class App {
   protected readonly imagePinataUri = signal('');
   protected readonly licensePinataUri = signal('');
   protected readonly encryptedAssetUri = signal('');
-  protected readonly oracleAccessToken = signal('');
-  protected readonly oracleDownloadUrl = signal('');
-  protected readonly oracleTokenExpiry = signal('');
   protected readonly imageSearchResults = signal<ImageSearchResult[]>([]);
   protected readonly imageSearchQueryHash = signal('');
   protected readonly licensingPaused = signal<boolean | null>(null);
@@ -90,15 +87,13 @@ export class App {
   protected licenseUsageTerms = '';
 
   protected oraclePurchaseId = '';
+  protected auditOwnerAddress = '';
   protected selectedSearchFile: File | null = null;
   protected searchFileName = '';
-  protected licensingOracleAddress = '';
 
   protected inspectCollectionId = '';
   protected inspectImageId = '';
-  protected inspectCandidateHash = '';
   protected inspectPurchaseId = '';
-  protected inspectSnapshotId = '';
 
   protected readonly shortAccount = computed(() => {
     const account = this.walletService.account();
@@ -124,6 +119,11 @@ export class App {
   protected async connectWallet(): Promise<void> {
     await this.runAction('Wallet connected', async () => {
       await this.walletService.connect();
+
+      if (this.walletService.chainId() !== POLYGON_AMOY_CONFIG.chainId) {
+        await this.walletService.switchToPolygonAmoy();
+      }
+
       return `Connected ${this.walletService.account()} on chain ${this.walletService.chainId()}`;
     });
   }
@@ -146,7 +146,6 @@ export class App {
 
     const hash = await this.dappService.hashFile(file);
     this.imageHashInput = hash;
-    this.inspectCandidateHash = hash;
     this.pushLog(`Calculated file hash for ${file.name}: ${hash}`);
   }
 
@@ -199,7 +198,7 @@ export class App {
         assetEncrypted: true,
         encryption: {
           algorithm: 'AES-256-GCM',
-          accessMode: 'oracle-download-token',
+          accessMode: 'oracle-direct-download',
           oracleBaseUrl: 'http://localhost:8000',
         },
         contentHash: this.imageHashInput,
@@ -300,11 +299,8 @@ export class App {
   protected async buyLicense(): Promise<void> {
     await this.runAction('License purchased', async () => {
       const offer = this.inspectedImageOffer();
-      if (!offer?.hasOffer) {
-        throw new Error('Load image details for an image with a configured license offer first.');
-      }
-      if (!offer.active) {
-        throw new Error('The loaded license offer is inactive and cannot be purchased.');
+      if (!offer) {
+        throw new Error('Load image details before purchasing a license.');
       }
 
       const result = await this.dappService.buyLicense(this.contractAddresses, offer.imageId, offer.priceMatic);
@@ -314,45 +310,24 @@ export class App {
     });
   }
 
-  protected async claimEncryptedAccess(): Promise<void> {
-    await this.runAction('Oracle access granted', async () => {
+  protected async downloadPurchasedImage(): Promise<void> {
+    await this.runAction('Decrypted file downloaded', async () => {
       const buyerAddress = this.walletService.account();
       if (!buyerAddress) {
-        throw new Error('Connect the buyer wallet before requesting an access token.');
+        throw new Error('Connect the buyer wallet before downloading the file.');
       }
 
       const issuedAt = new Date().toISOString();
       const signer = await this.walletService.getSigner();
       const claimMessage = this.oracleAccessService.buildClaimMessage(this.oraclePurchaseId, buyerAddress, issuedAt);
       const signedMessage = await signer.signMessage(claimMessage);
-      const result = await this.oracleAccessService.claimAccessToken(
+      const blob = await this.oracleAccessService.downloadDecryptedFile(
         this.oraclePurchaseId,
         buyerAddress,
         signedMessage,
         issuedAt,
       );
 
-      this.oracleAccessToken.set(result.accessToken);
-      this.oracleDownloadUrl.set(result.downloadUrl);
-      this.oracleTokenExpiry.set(result.expiresAt);
-      this.pushLog(`Oracle access token issued for purchase ${result.purchaseId}. Proof ${result.accessProof}`);
-      if (result.confirmationTransactionHash) {
-        this.pushLog(`Oracle confirmation tx: ${result.confirmationTransactionHash}`);
-      }
-
-      return `Encrypted asset access approved for purchase ${result.purchaseId}`;
-    });
-  }
-
-  protected async downloadPurchasedImage(): Promise<void> {
-    await this.runAction('Decrypted file downloaded', async () => {
-      const accessToken = this.oracleAccessToken();
-      const downloadUrl = this.oracleDownloadUrl();
-      if (!accessToken || !downloadUrl) {
-        throw new Error('Request an oracle access token before downloading the file.');
-      }
-
-      const blob = await this.oracleAccessService.downloadDecryptedFile(downloadUrl, accessToken);
       const objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = objectUrl;
@@ -360,6 +335,7 @@ export class App {
       anchor.click();
       URL.revokeObjectURL(objectUrl);
 
+      this.pushLog(`Downloaded decrypted original for purchase ${this.oraclePurchaseId}.`);
       return `Downloaded decrypted asset for purchase ${this.oraclePurchaseId}`;
     });
   }
@@ -390,10 +366,15 @@ export class App {
     });
   }
 
-  protected async updateLicensingOracle(): Promise<void> {
-    await this.runAction('Oracle address updated', async () => {
-      const transactionHash = await this.dappService.setOracle(this.contractAddresses, this.licensingOracleAddress);
-      return `Oracle updated to ${this.licensingOracleAddress} tx ${transactionHash}`;
+  protected async setAuditOwner(): Promise<void> {
+    await this.runAction('Audit owner updated', async () => {
+      const nextOwner = this.auditOwnerAddress.trim();
+      if (!nextOwner) {
+        throw new Error('Enter the new owner address for ModelAndIndexAudit.');
+      }
+
+      const transactionHash = await this.dappService.setAuditOwner(this.contractAddresses, nextOwner);
+      return `ModelAndIndexAudit owner changed to ${nextOwner} tx ${transactionHash}`;
     });
   }
 
@@ -433,7 +414,6 @@ export class App {
       const payload = await this.dappService.getImageDetails(
         this.contractAddresses,
         this.inspectImageId,
-        this.inspectCandidateHash,
       );
       const hasOffer = payload.licenseOffer.seller !== '0x0000000000000000000000000000000000000000';
       this.inspectedImageOffer.set({
@@ -483,10 +463,10 @@ export class App {
   }
 
   protected async inspectSnapshot(): Promise<void> {
-    await this.runAction('Snapshot inspected', async () => {
-      const payload = await this.dappService.getSnapshotDetails(this.contractAddresses, this.inspectSnapshotId, '', '');
+    await this.runAction('Snapshots inspected', async () => {
+      const payload = await this.dappService.getSnapshotDetails(this.contractAddresses);
       this.inspectorOutput.set(this.stringifyInspectorOutput(payload));
-      return `Loaded snapshot ${this.inspectSnapshotId}`;
+      return `Loaded ${payload.snapshots.length} snapshots`;
     });
   }
 
