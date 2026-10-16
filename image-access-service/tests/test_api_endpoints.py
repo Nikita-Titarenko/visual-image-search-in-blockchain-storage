@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
-from api_test_utils import load_oracle_api_module
+from tests.api_test_utils import load_oracle_api_module
 
 
 class FakeOracleService:

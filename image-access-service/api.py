@@ -6,7 +6,7 @@ from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-from blockchain import build_contracts
+from gateway import OracleDataGateway, build_gateway
 from config import ALLOWED_ORIGINS
 from models import ClaimAccessRequest, OracleContracts
 
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 
 contracts: OracleContracts | None = None
+gateway_instance: OracleDataGateway | None = None
 service: OracleService | None = None
 
 
@@ -25,17 +26,24 @@ def create_app(
     contracts_override: OracleContracts | None = None,
 ) -> FastAPI:
     current_contracts = contracts_override
+    current_gateway = None
     current_service = service_instance
 
-    def get_contracts() -> OracleContracts:
-        nonlocal current_contracts
+    def get_gateway() -> OracleDataGateway:
+        nonlocal current_gateway, current_contracts
         global contracts
+        global gateway_instance
+        if current_gateway is not None:
+            return current_gateway
         if current_contracts is not None:
-            return current_contracts
-        if contracts is None:
-            contracts = build_contracts()
-        current_contracts = contracts
-        return current_contracts
+            from blockchain import BlockchainOracleGateway
+
+            current_gateway = BlockchainOracleGateway(current_contracts)
+            return current_gateway
+        if gateway_instance is None:
+            gateway_instance = build_gateway()
+        current_gateway = gateway_instance
+        return current_gateway
 
     def get_service() -> OracleService:
         nonlocal current_service
@@ -45,7 +53,7 @@ def create_app(
         if service is None:
             from service import OracleService
 
-            service = OracleService(get_contracts())
+            service = OracleService(get_gateway())
         current_service = service
         return current_service
 

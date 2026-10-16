@@ -27,7 +27,7 @@ describe("Contract integration flows", function () {
 
   it("executes the end-to-end registry, licensing, and audit flow", async function () {
     const { registry, licensing, audit, seller, buyer } = await loadFixture(deployFixture);
-    await registry.connect(seller).registerCollection("Premium", "ipfs://premium");
+    await registry.connect(seller).registerCollection("ipfs://premium");
     await registry.connect(seller).registerImage(digest("asset-1"), "ipfs://asset-1", 1n);
     await licensing.connect(seller).configureLicenseOffer(1n, ethers.parseEther("1"), "ipfs://terms", true);
 
@@ -59,7 +59,7 @@ describe("Contract integration flows", function () {
 
     const collectionTimestamp = (await time.latest()) + 100;
     await time.setNextBlockTimestamp(collectionTimestamp);
-    await registry.connect(seller).registerCollection("Timed", "ipfs://timed");
+    await registry.connect(seller).registerCollection("ipfs://timed");
 
     const imageTimestamp = collectionTimestamp + 100;
     await time.setNextBlockTimestamp(imageTimestamp);
@@ -88,7 +88,7 @@ describe("Contract integration flows", function () {
 
   it("keeps registry views consistent across collections and all-images listing", async function () {
     const { registry, seller, otherBuyer } = await loadFixture(deployFixture);
-    await registry.connect(seller).registerCollection("Batch", "ipfs://batch");
+    await registry.connect(seller).registerCollection("ipfs://batch");
     await registry.connect(seller).registerImage(digest("asset-4"), "ipfs://asset-4", 1n);
     await registry.connect(seller).registerImage(digest("asset-5"), "ipfs://asset-5", 1n);
     await registry.connect(otherBuyer).registerImage(digest("asset-6"), "ipfs://asset-6", 0);
@@ -96,7 +96,6 @@ describe("Contract integration flows", function () {
     const [collection, collectionImages] = await registry.getCollectionWithImages(1n);
     const allImages = await registry.getAllImages();
 
-    expect(collection.name).to.equal("Batch");
     expect(collectionImages.map((image) => image.id)).to.deep.equal([1n, 2n]);
     expect(allImages.map((image) => image.id)).to.deep.equal([1n, 2n, 3n]);
   });

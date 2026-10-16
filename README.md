@@ -109,6 +109,73 @@ Buy the prepared license on Polygon Amoy:
 npm.cmd --prefix smart-contracts run amoy:buy-license
 ```
 
+Measure `registerCollection` confirmation time 5 times on the local Hardhat network and then 5 times on Polygon Amoy:
+
+```bash
+npm.cmd --prefix smart-contracts run measure:register-collection-confirmation
+```
+
+The script writes raw timings to `smart-contracts/reports/register-collection-confirmation.json`.
+
+Build the histogram from the saved timing report:
+
+```bash
+python smart-contracts/scripts/plot_register_collection_confirmation_histogram.py
+```
+
+The histogram is written to `smart-contracts/reports/register-collection-confirmation-histogram.svg` using `matplotlib`.
+
+Measure how `registerCollection` gas usage changes on the local Hardhat network as the number of already stored collections grows:
+
+```bash
+npm.cmd --prefix smart-contracts run measure:register-collection-gas-by-record-count
+```
+
+The script repeatedly calls `registerCollection` on one local `ImageRegistry` deployment and writes raw measurements to `smart-contracts/reports/register-collection-gas-by-record-count.json`.
+
+Measurement script:
+
+```bash
+node smart-contracts/scripts/measure-register-collection-gas-by-record-count.js
+```
+
+Build the corresponding gas-vs-record-count chart:
+
+```bash
+python smart-contracts/scripts/plot_register_collection_gas_by_record_count.py
+```
+
+The chart is written to `smart-contracts/reports/register-collection-gas-by-record-count.svg` using `matplotlib`.
+
+Start the dedicated benchmark services in a separate terminal. This launcher follows the regular service startup flow, but redirects service state and vector index artifacts into `smart-contracts/reports/local-benchmark-runtime/` so benchmark data does not mix with the default runtime files:
+
+```bash
+./start-test-services.sh
+```
+
+On Windows PowerShell, prefer the wrapper below instead of calling the `.sh` file directly, because `.sh` file associations on Windows can detach or close immediately:
+
+```powershell
+./start-test-services.ps1
+```
+
+Then run the local end-to-end benchmark. The benchmark script starts or reuses the local Hardhat node itself, deploys fresh local contracts right before the run, writes `smart-contracts/reports/local-benchmark-stack.json`, waits for the test services, uses the real Pinata-backed upload path, and then benchmarks register-image, configure-license, buy-license, decrypt-download, and top-10 search flows for 100, 1000, and 5000 virtual users:
+
+```bash
+npm.cmd --prefix smart-contracts run benchmark:local-system-test
+```
+
+The benchmark writes deployed local contract addresses to `smart-contracts/reports/local-benchmark-stack.json` and writes its report to `smart-contracts/reports/local-system-benchmark.json`.
+After each load level completes, the benchmark unpins every Pinata object it uploaded during that load level through the Pinata proxy.
+
+Build the benchmark bottleneck chart:
+
+```bash
+python smart-contracts/scripts/plot_local_system_benchmark.py
+```
+
+The chart is written to `smart-contracts/reports/local-system-benchmark.svg` using `matplotlib`.
+
 Run the deployment script on the local Hardhat network:
 
 ```bash

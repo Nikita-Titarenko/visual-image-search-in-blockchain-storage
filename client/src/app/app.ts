@@ -162,7 +162,7 @@ export class App {
       this.collectionPinataUri.set(metadataUpload.ipfsUri);
       this.pushLog(`Pinned collection metadata to Pinata: ${metadataUpload.ipfsUri}`);
 
-      const result = await this.dappService.registerCollection(this.contractAddresses, this.collectionName, metadataUpload.ipfsUri);
+      const result = await this.dappService.registerCollection(this.contractAddresses, metadataUpload.ipfsUri);
       this.inspectCollectionId = result.collectionId;
       return `Collection ID ${result.collectionId} tx ${result.transactionHash}`;
     });

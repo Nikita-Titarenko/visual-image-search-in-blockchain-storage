@@ -4,11 +4,12 @@ smart-contracts/cache/
 smart-contracts/coverage/
 smart-contracts/coverage.json
 .env
-oracle/state.json
-oracle/.venv/
 image-vector-service/state/
 image-vector-service/.venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
+smart-contracts/reports
+image-access-service/state.json
+image-access-service/state.test.json

@@ -149,7 +149,7 @@ async function main() {
   });
 
   console.log("Creating collection...");
-  const collectionTx = await imageRegistry.registerCollection(collectionName, collectionMetadata.ipfsUri);
+  const collectionTx = await imageRegistry.registerCollection(collectionMetadata.ipfsUri);
   console.log("Collection tx:", collectionTx.hash);
   const collectionReceipt = await collectionTx.wait();
   const collectionId = parseEventArg(collectionReceipt, imageRegistry.interface, "CollectionRegistered", "collectionId");

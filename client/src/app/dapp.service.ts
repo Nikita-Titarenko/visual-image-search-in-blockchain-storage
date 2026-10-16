@@ -22,10 +22,10 @@ export class DappService {
     return keccak256(bytes);
   }
 
-  async registerCollection(addresses: ContractAddresses, name: string, metadataUri: string) {
+  async registerCollection(addresses: ContractAddresses, metadataUri: string) {
     const signer = await this.walletService.getSigner();
     const contract = new Contract(addresses.imageRegistry, imageRegistryAbi, signer);
-    const tx = await contract['registerCollection'](name, metadataUri, await this.getWriteOverrides(signer));
+    const tx = await contract['registerCollection'](metadataUri, await this.getWriteOverrides(signer));
     const receipt = await tx.wait();
     const collectionId = this.extractEventValue(receipt.logs, imageRegistryAbi, 'CollectionRegistered', 'collectionId');
 

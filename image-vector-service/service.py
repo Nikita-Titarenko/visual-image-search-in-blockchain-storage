@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import asyncio
 import mimetypes
-from collections.abc import Mapping
+from time import perf_counter
 from pathlib import Path
 from typing import Any
 
 import kagglehub
 import numpy as np
 from fastapi import HTTPException, UploadFile
-from web3 import AsyncWeb3, WebSocketProvider, Web3
+from web3 import Web3
 
-from audit import compute_index_hash, ensure_audit_snapshot, load_audit_metadata, save_audit_metadata, verify_snapshot
-from bootstrap import build_record_from_image_registered_log, ensure_pinata_dataset, get_image_registered_topic, get_image_registry_address, load_manifest, resolve_websocket_rpc_url, save_manifest, write_last_processed_block
+from audit import compute_index_hash, load_audit_metadata, save_audit_metadata
+from bootstrap import build_record_from_image_registered_log, load_manifest, save_manifest, write_last_processed_block
 from config import AUDIT_SNAPSHOT_IMAGE_INTERVAL, DEV_INDEX_PATH, INDEX_PATH, STATE_DIR, VECTOR_DEV_DATASET_LIMIT, VECTOR_INDEX_VERSION, VECTOR_MODEL_VERSION, VECTOR_TEST_DATASET_ID, VECTOR_TOP_K_DEFAULT, VECTOR_TOP_K_MAX
+from data_backend import ImageDataBackend, build_data_backend
 from features import FeatureExtractor
 from logger import get_logger
 from models import AuditStatusResponse, DatasetImageRecord, SearchResponse, SearchResult, TestDatasetImageRecord
@@ -29,6 +30,8 @@ class ImageVectorService:
         use_fine_tuned_model: bool = True,
         index_path: Path | None = None,
         enable_audit_artifacts: bool = True,
+        data_backend: ImageDataBackend | None = None,
+        use_centralized_backend: bool | None = None,
     ) -> None:
         self.logger = get_logger()
         self.logger.info("Initializing ImageVectorService")
@@ -36,6 +39,7 @@ class ImageVectorService:
         self.include_test_dataset = include_test_dataset
         self.index_path = index_path or (DEV_INDEX_PATH if include_test_dataset else INDEX_PATH)
         self.enable_audit_artifacts = enable_audit_artifacts
+        self.data_backend = data_backend or build_data_backend(use_centralized_backend=use_centralized_backend)
         self.extractor = FeatureExtractor(load_fine_tuned_weights=use_fine_tuned_model)
         self.logger.info("FeatureExtractor initialized")
         self.test_records: list[TestDatasetImageRecord] = []
@@ -110,15 +114,16 @@ class ImageVectorService:
             relativePath=record.relative_path,
         )
 
-    async def _upsert_record_from_event_log(self, event_log: dict[str, object]) -> bool:
-        record = await build_record_from_image_registered_log(event_log)
+    async def _upsert_record(self, record: DatasetImageRecord) -> bool:
         if record is None:
             return False
+
+        self.logger.info("Received registered image update for image %s", record.image_id)
 
         async with self._sync_lock:
             existing_record = next((item for item in self.records if item.image_id == record.image_id), None)
             if existing_record is not None:
-                self.logger.info("ImageRegistered event for image %s already exists, skipping duplicate insert", record.image_id)
+                self.logger.info("Registered image %s already exists, skipping duplicate insert", record.image_id)
                 return False
 
             index_mismatch_before_append = (
@@ -137,12 +142,29 @@ class ImageVectorService:
                 await self._append_records_to_index([record])
 
             save_manifest(self.records)
+            self._refresh_audit_metadata()
+            await self._maybe_record_audit_snapshot("live registered image update")
+            self.logger.info("Registered image update added image %s", record.image_id)
+            return True
+
+    async def _upsert_record_from_event_log(self, event_log: dict[str, object]) -> bool:
+        record = await build_record_from_image_registered_log(event_log)
+        if record is None:
+            return False
+        updated = await self._upsert_record(record)
+        if updated:
             block_number = self._coerce_block_number(event_log["blockNumber"])
             write_last_processed_block(block_number + 1)
+        return updated
+
+    async def _reset_registered_records(self) -> None:
+        self.logger.info("Resetting registered image state from backend event")
+        async with self._sync_lock:
+            self.records = []
+            save_manifest(self.records)
+            await self.rebuild_index()
             self._refresh_audit_metadata()
-            await self._maybe_record_audit_snapshot("live ImageRegistered event")
-            self.logger.info("ImageRegistered event added image %s and advanced last_processed_block to %s", record.image_id, block_number + 1)
-            return True
+        self.logger.info("Registered image state reset completed")
 
     def _save_index(self) -> None:
         if self.cnn_index is None or self.hist_index is None:
@@ -209,7 +231,7 @@ class ImageVectorService:
             )
             return False
 
-        await ensure_audit_snapshot(
+        await self.data_backend.ensure_audit_snapshot(
             self.model_version,
             self.model_hash,
             VECTOR_INDEX_VERSION,
@@ -239,8 +261,19 @@ class ImageVectorService:
         self.cnn_index = self._stack_feature_rows([self.cnn_index, new_cnn_index])
         self.hist_index = self._stack_feature_rows([self.hist_index, new_hist_index])
 
-    def _extract_record_features(self, image_bytes: bytes) -> tuple[np.ndarray, np.ndarray]:
-        return self.extractor.extract_features(image_bytes)
+    def _extract_record_features(self, image_bytes: bytes, *, source_label: str) -> tuple[np.ndarray, np.ndarray]:
+        started_at = perf_counter()
+        cnn_feature, hist_feature = self.extractor.extract_features(image_bytes)
+        duration_ms = (perf_counter() - started_at) * 1000
+        self.logger.info(
+            "Feature extraction completed: source=%s bytes=%s duration_ms=%.2f cnn_shape=%s hist_shape=%s",
+            source_label,
+            len(image_bytes),
+            duration_ms,
+            getattr(cnn_feature, "shape", None),
+            getattr(hist_feature, "shape", None),
+        )
+        return cnn_feature, hist_feature
 
     async def _append_records_to_index(self, new_records: list[DatasetImageRecord]) -> None:
         cnn_vectors: list[np.ndarray] = []
@@ -254,7 +287,10 @@ class ImageVectorService:
                 record.relative_path,
             )
             image_bytes = await fetch_bytes(record.gateway_url)
-            cnn_feature, hist_feature = self._extract_record_features(image_bytes)
+            cnn_feature, hist_feature = self._extract_record_features(
+                image_bytes,
+                source_label=f"live-sync:{record.relative_path}",
+            )
             cnn_vectors.append(cnn_feature)
             hist_vectors.append(hist_feature)
 
@@ -270,7 +306,7 @@ class ImageVectorService:
             ensure_directory(STATE_DIR)
             self.test_records = self._load_test_dataset_records() if self.include_test_dataset else []
             if include_registered_images:
-                self.records, historical_added_count = await ensure_pinata_dataset()
+                self.records, historical_added_count = await self.data_backend.sync_registered_images()
             else:
                 self.records = []
                 historical_added_count = 0
@@ -349,7 +385,10 @@ class ImageVectorService:
                     record.relative_path,
                 )
                 image_bytes = record.file_path.read_bytes()
-                cnn_feature, hist_feature = self._extract_record_features(image_bytes)
+                cnn_feature, hist_feature = self._extract_record_features(
+                    image_bytes,
+                    source_label=f"rebuild-test:{record.relative_path}",
+                )
                 cnn_vectors.append(cnn_feature)
                 hist_vectors.append(hist_feature)
 
@@ -361,7 +400,10 @@ class ImageVectorService:
                 record.relative_path,
             )
             image_bytes = await fetch_bytes(record.gateway_url)
-            cnn_feature, hist_feature = self._extract_record_features(image_bytes)
+            cnn_feature, hist_feature = self._extract_record_features(
+                image_bytes,
+                source_label=f"rebuild-registered:{record.relative_path}",
+            )
             cnn_vectors.append(cnn_feature)
             hist_vectors.append(hist_feature)
 
@@ -388,38 +430,44 @@ class ImageVectorService:
         )
 
     async def listen_for_registered_images(self) -> None:
-        registry_address = get_image_registry_address()
-        topic = get_image_registered_topic()
-        websocket_url = resolve_websocket_rpc_url()
-        self.logger.info("Starting ImageRegistered websocket listener for %s via %s", registry_address, websocket_url)
+        if not self.include_registered_images:
+            self.logger.info("Skipping registered image listener because include_registered_images is disabled")
+            return
+        await self.data_backend.listen_for_registered_images(self._upsert_record, self._reset_registered_records)
 
-        while True:
-            provider = WebSocketProvider(websocket_url)
-            websocket_client = AsyncWeb3(provider)
-            try:
-                await provider.connect()
-                subscription_id = await websocket_client.eth.subscribe(
-                    "logs",
-                    {
-                        "address": Web3.to_checksum_address(registry_address),
-                        "topics": [topic],
-                    },
-                )
-                self.logger.info("Subscribed to ImageRegistered logs with subscription id %s", subscription_id)
-                async for message in websocket_client.socket.process_subscriptions():
-                    result = message.get("result")
-                    if not isinstance(result, Mapping):
-                        self.logger.warning("Skipping subscription payload with unexpected result type %s", type(result).__name__)
-                        continue
-                    await self._upsert_record_from_event_log(dict(result))
-            except asyncio.CancelledError:
-                self.logger.info("ImageRegistered websocket listener cancelled")
-                raise
-            except Exception:
-                self.logger.exception("ImageRegistered websocket listener failed; reconnecting")
-                await asyncio.sleep(1)
-            finally:
-                await provider.disconnect()
+    def _verify_active_snapshot(self) -> None:
+        if not self.enable_audit_artifacts:
+            self.logger.info("Skipping snapshot verification because audit artifacts are disabled")
+            return
+
+        metadata = load_audit_metadata()
+        snapshot_id = metadata.get("snapshotId")
+        if snapshot_id in (None, ""):
+            self.logger.error("Search blocked because no audit snapshotId is present in audit metadata")
+            raise HTTPException(status_code=503, detail="Audit snapshot is not configured.")
+
+        try:
+            snapshot_id_int = int(snapshot_id)
+        except (TypeError, ValueError) as error:
+            self.logger.exception("Search blocked because audit snapshotId is invalid: %s", snapshot_id)
+            raise HTTPException(status_code=503, detail="Audit snapshot is invalid.") from error
+
+        try:
+            is_match = self.data_backend.verify_snapshot(snapshot_id_int, self.model_hash, self.index_hash)
+        except Exception as error:
+            self.logger.exception("Search blocked because audit snapshot verification failed")
+            raise HTTPException(status_code=503, detail="Unable to verify audit snapshot.") from error
+
+        if not is_match:
+            self.logger.error(
+                "Search blocked because audit snapshot %s does not match model_hash=%s index_hash=%s",
+                snapshot_id_int,
+                self.model_hash,
+                self.index_hash,
+            )
+            raise HTTPException(status_code=503, detail="Audit snapshot verification failed.")
+
+        self.logger.info("Audit snapshot %s verified successfully before search", snapshot_id_int)
 
     async def search(self, query_file: UploadFile, top_k: int) -> SearchResponse:
         self.logger.info("Search started: file=%s requested_top_k=%s method=cnn", query_file.filename, top_k)
@@ -443,12 +491,17 @@ class ImageVectorService:
             self.logger.error("Search rejected because indices are not initialized")
             raise HTTPException(status_code=503, detail="Search index is not initialized.")
 
+        self._verify_active_snapshot()
+
         image_bytes = await query_file.read()
         if not image_bytes:
             self.logger.error("Search rejected because query image is empty")
             raise HTTPException(status_code=400, detail="Query image is empty.")
 
-        query_cnn, query_hist = self.extractor.extract_features(image_bytes)
+        query_cnn, query_hist = self._extract_record_features(
+            image_bytes,
+            source_label=f"search-query:{query_file.filename or 'unknown'}",
+        )
         scores = self.cnn_index @ query_cnn
         distances = 1 - scores
 
@@ -479,7 +532,7 @@ class ImageVectorService:
         metadata = load_audit_metadata()
         on_chain_match = None
         if snapshot_id is not None:
-            on_chain_match = verify_snapshot(snapshot_id, self.model_hash, self.index_hash)
+            on_chain_match = self.data_backend.verify_snapshot(snapshot_id, self.model_hash, self.index_hash)
 
         self.logger.info("Audit status computation completed: on_chain_match=%s", on_chain_match)
 

@@ -20,14 +20,13 @@ describe("ImageRegistry", function () {
     const nextTimestamp = (await time.latest()) + 60;
     await time.setNextBlockTimestamp(nextTimestamp);
 
-    await expect(registry.connect(creator).registerCollection("Animals", "ipfs://collection-1"))
+    await expect(registry.connect(creator).registerCollection("ipfs://collection-1"))
       .to.emit(registry, "CollectionRegistered")
-      .withArgs(1n, creator.address, "Animals");
+      .withArgs(1n, creator.address);
 
     const [collection, images] = await registry.getCollectionWithImages(1n);
     expect(collection.id).to.equal(1n);
     expect(collection.creator).to.equal(creator.address);
-    expect(collection.name).to.equal("Animals");
     expect(collection.metadataURI).to.equal("ipfs://collection-1");
     expect(collection.createdAt).to.equal(BigInt(nextTimestamp));
     expect(images).to.have.lengthOf(0);
@@ -36,12 +35,12 @@ describe("ImageRegistry", function () {
   it("increments collection ids across registrations", async function () {
     const { registry, creator, other } = await loadFixture(deployFixture);
 
-    await expect(registry.connect(creator).registerCollection("A", "ipfs://a"))
+    await expect(registry.connect(creator).registerCollection("ipfs://a"))
       .to.emit(registry, "CollectionRegistered")
-      .withArgs(1n, creator.address, "A");
-    await expect(registry.connect(other).registerCollection("B", "ipfs://b"))
+      .withArgs(1n, creator.address);
+    await expect(registry.connect(other).registerCollection("ipfs://b"))
       .to.emit(registry, "CollectionRegistered")
-      .withArgs(2n, other.address, "B");
+      .withArgs(2n, other.address);
   });
 
   it("registers an image without a collection", async function () {
@@ -65,12 +64,11 @@ describe("ImageRegistry", function () {
 
   it("adds collection images to the collection listing", async function () {
     const { registry, creator } = await loadFixture(deployFixture);
-    await registry.connect(creator).registerCollection("Vehicles", "ipfs://vehicles");
+    await registry.connect(creator).registerCollection("ipfs://vehicles");
     await registry.connect(creator).registerImage(hashLabel("car"), "ipfs://car", 1);
     await registry.connect(creator).registerImage(hashLabel("plane"), "ipfs://plane", 1);
 
     const [collection, images] = await registry.getCollectionWithImages(1n);
-    expect(collection.name).to.equal("Vehicles");
     expect(images.map((image) => image.id)).to.deep.equal([1n, 2n]);
     expect(images.map((image) => image.metadataURI)).to.deep.equal(["ipfs://car", "ipfs://plane"]);
   });
@@ -161,7 +159,7 @@ describe("ImageRegistry", function () {
 
   it("rejects collection images from non-creators", async function () {
     const { registry, creator, other } = await loadFixture(deployFixture);
-    await registry.connect(creator).registerCollection("Private", "ipfs://private");
+    await registry.connect(creator).registerCollection("ipfs://private");
 
     await expect(registry.connect(other).registerImage(hashLabel("intruder"), "ipfs://intruder", 1))
       .to.be.revertedWithCustomError(registry, "OnlyCollectionCreatorCanAddImages")

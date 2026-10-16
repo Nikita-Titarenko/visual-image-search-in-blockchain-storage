@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import numpy as np
+from fastapi import HTTPException
 
 
 SERVICE_DIR = Path(__file__).resolve().parent.parent
@@ -102,6 +103,73 @@ class ImageVectorServiceEventSyncTests(unittest.IsolatedAsyncioTestCase):
         service.rebuild_index.assert_awaited_once()
         self.assertEqual(save_manifest.call_count, 2)
         write_last_processed_block.assert_called_once_with(92)
+
+
+class ImageVectorServiceAuditVerificationTests(unittest.IsolatedAsyncioTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.service_module = load_service_module()
+
+    def _make_service(self):
+        service = self.service_module.ImageVectorService.__new__(self.service_module.ImageVectorService)
+        service.logger = Mock()
+        service.include_test_dataset = False
+        service.include_registered_images = True
+        service.enable_audit_artifacts = True
+        service.data_backend = Mock()
+        service.records = [SimpleNamespace(image_id=1)]
+        service.test_records = []
+        service.cnn_index = np.zeros((1, 512), dtype=np.float32)
+        service.hist_index = np.zeros((1, 24), dtype=np.float32)
+        service.model_version = "model-v1"
+        service.model_hash = "0xmodel"
+        service.index_hash = "0xindex"
+        service._sync_lock = asyncio.Lock()
+        service._build_registered_search_result = Mock(return_value={
+            "rank": 1,
+            "score": 1.0,
+            "distance": 0.0,
+            "imageId": 1,
+            "className": "class-a",
+            "fileName": "image.jpg",
+            "ipfsUri": "ipfs://hash",
+            "gatewayUrl": "https://gateway.example/hash",
+            "contentHash": "0xcontent",
+            "relativePath": "class-a/image.jpg",
+        })
+        service._hash_query = Mock(return_value="0xquery")
+        service.extractor = Mock()
+        service.extractor.extract_features.return_value = (
+            np.zeros((512,), dtype=np.float32),
+            np.zeros((24,), dtype=np.float32),
+        )
+        return service
+
+    async def test_search_verifies_audit_snapshot_before_returning_results(self) -> None:
+        service = self._make_service()
+        query = AsyncMock()
+        query.filename = "query.jpg"
+        query.read = AsyncMock(return_value=b"query-bytes")
+
+        with patch.object(self.service_module, "load_audit_metadata", return_value={"snapshotId": 7}):
+            response = await service.search(query, 10)
+
+        service.data_backend.verify_snapshot.assert_called_once_with(7, "0xmodel", "0xindex")
+        self.assertEqual(response.topK, 1)
+
+    async def test_search_rejects_results_when_audit_snapshot_does_not_match(self) -> None:
+        service = self._make_service()
+        service.data_backend.verify_snapshot.return_value = False
+        query = AsyncMock()
+        query.filename = "query.jpg"
+        query.read = AsyncMock(return_value=b"query-bytes")
+
+        with patch.object(self.service_module, "load_audit_metadata", return_value={"snapshotId": 7}):
+            with self.assertRaises(HTTPException) as context:
+                await service.search(query, 10)
+
+        self.assertEqual(context.exception.status_code, 503)
+        self.assertEqual(context.exception.detail, "Audit snapshot verification failed.")
 
 
 if __name__ == "__main__":

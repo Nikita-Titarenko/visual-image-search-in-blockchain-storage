@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from api_test_utils import load_openapi_spec
+from tests.api_test_utils import load_openapi_spec
 
 
 class OracleOpenApiSpecificationTests(unittest.TestCase):

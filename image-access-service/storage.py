@@ -9,6 +9,7 @@ from config import STORE_PATH
 
 
 def ensure_store() -> dict[str, Any]:
+    STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
     if STORE_PATH.exists():
         return json.loads(STORE_PATH.read_text(encoding="utf-8"))
 
@@ -18,6 +19,7 @@ def ensure_store() -> dict[str, Any]:
 
 
 def save_store(store: dict[str, Any]) -> None:
+    STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
     STORE_PATH.write_text(json.dumps(store, indent=2), encoding="utf-8")
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 import httpx
@@ -10,15 +11,18 @@ from config import DEFAULT_GATEWAY
 from utils import ipfs_to_gateway
 
 
+PINATA_API_BASE_URL = os.getenv("PINATA_API_BASE_URL", "https://api.pinata.cloud").rstrip("/")
+
+
 async def pin_file_to_ipfs(file_name: str, content: bytes, content_type: str, pinata_jwt: str) -> dict[str, Any]:
     files = {
         "file": (file_name, content, content_type),
         "pinataMetadata": (None, json.dumps({"name": file_name}), "application/json"),
     }
-    headers = {"Authorization": f"Bearer {pinata_jwt}"}
+    headers = {"Authorization": f"Bearer {pinata_jwt}"} if pinata_jwt else {}
 
     async with httpx.AsyncClient(timeout=60) as client:
-        response = await client.post("https://api.pinata.cloud/pinning/pinFileToIPFS", files=files, headers=headers)
+        response = await client.post(f"{PINATA_API_BASE_URL}/pinning/pinFileToIPFS", files=files, headers=headers)
 
     if response.status_code >= 400:
         raise HTTPException(status_code=response.status_code, detail=response.text)

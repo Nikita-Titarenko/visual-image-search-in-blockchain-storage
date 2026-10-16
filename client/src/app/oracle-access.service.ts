@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
 
+import { mapServiceFetchError, parseServiceError } from './api-error.utils';
+
 export interface OracleEncryptedUploadResult {
   ipfsHash: string;
   ipfsUri: string;
@@ -27,38 +29,56 @@ export class OracleAccessService {
     formData.append('file', file, file.name);
     formData.append('contentHash', contentHash);
 
-    const response = await fetch(`${ORACLE_BASE_URL}/api/oracle/encrypt-upload`, {
-      method: 'POST',
-      body: formData,
-    });
+    try {
+      const response = await fetch(`${ORACLE_BASE_URL}/api/oracle/encrypt-upload`, {
+        method: 'POST',
+        body: formData,
+      });
 
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { detail?: string; error?: string } | null;
-      throw new Error(payload?.detail || payload?.error || 'Encrypted upload failed.');
+      if (!response.ok) {
+        throw await parseServiceError(
+          response,
+          'Image-access service returned an error while encrypting and uploading the original image.',
+        );
+      }
+
+      return (await response.json()) as OracleEncryptedUploadResult;
+    } catch (error) {
+      throw mapServiceFetchError(
+        error,
+        'Image-access service is unavailable. Start image-access-service and try the encrypted upload again.',
+      );
     }
-
-    return (await response.json()) as OracleEncryptedUploadResult;
   }
 
   async downloadDecryptedFile(purchaseId: string, buyerAddress: string, signedMessage: string, issuedAt: string): Promise<Blob> {
-    const response = await fetch(`${ORACLE_BASE_URL}/api/oracle/download`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        purchaseId: Number(purchaseId),
-        buyerAddress,
-        signedMessage,
-        issuedAt,
-      }),
-    });
+    try {
+      const response = await fetch(`${ORACLE_BASE_URL}/api/oracle/download`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          purchaseId: Number(purchaseId),
+          buyerAddress,
+          signedMessage,
+          issuedAt,
+        }),
+      });
 
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { detail?: string; error?: string } | null;
-      throw new Error(payload?.detail || payload?.error || 'Decrypted download failed.');
+      if (!response.ok) {
+        throw await parseServiceError(
+          response,
+          'Image-access service returned an error while downloading the decrypted original image.',
+        );
+      }
+
+      return response.blob();
+    } catch (error) {
+      throw mapServiceFetchError(
+        error,
+        'Image-access service is unavailable. Start image-access-service and try the decrypted download again.',
+      );
     }
-
-    return response.blob();
   }
 }

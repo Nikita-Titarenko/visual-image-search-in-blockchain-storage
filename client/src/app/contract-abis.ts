@@ -6,12 +6,12 @@ export const imageRegistryAbi = [
   'error OnlyCollectionCreatorCanAddImages(uint256 collectionId, address caller)',
   'error OwnableUnauthorizedAccount(address account)',
   'error OwnableInvalidOwner(address owner)',
-  'function registerCollection(string name, string metadataURI) returns (uint256)',
+  'function registerCollection(string metadataURI) returns (uint256)',
   'function registerImage(bytes32 contentHash, string metadataURI, uint256 collectionId) returns (uint256)',
   'function verifyImageHash(uint256 imageId, bytes32 candidateHash) view returns (bool)',
   'function getImage(uint256 imageId) view returns ((uint256 id, uint256 collectionId, address currentOwner, bytes32 contentHash, string metadataURI, uint64 registeredAt))',
-  'function getCollectionWithImages(uint256 collectionId) view returns ((uint256 id, address creator, string name, string metadataURI, uint64 createdAt), (uint256 id, uint256 collectionId, address currentOwner, bytes32 contentHash, string metadataURI, uint64 registeredAt)[])',
-  'event CollectionRegistered(uint256 indexed collectionId, address indexed creator, string name)',
+  'function getCollectionWithImages(uint256 collectionId) view returns ((uint256 id, address creator, string metadataURI, uint64 createdAt), (uint256 id, uint256 collectionId, address currentOwner, bytes32 contentHash, string metadataURI, uint64 registeredAt)[])',
+  'event CollectionRegistered(uint256 indexed collectionId, address indexed creator)',
   'event ImageRegistered(uint256 indexed imageId, uint256 indexed collectionId, address indexed creator, bytes32 contentHash, string metadataURI)',
 ] as const;
 

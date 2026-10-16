@@ -31,7 +31,7 @@ export const POLYGON_AMOY_CONFIG: NetworkConfig = {
 };
 
 export const DEFAULT_CONTRACT_ADDRESSES: ContractAddresses = {
-  imageRegistry: '0xEB7E73bC98943BfC382035F1D97ff484a8BA2485',
-  licensingAndPayment: '0xA76B3778F95D649225591ea00ED69eDCFf586A69',
-  modelAndIndexAudit: '0x08C053531D54A5496646c5443db9E0F06A9F27D0',
+  imageRegistry: '0xB1e92B954F96892781667d84cC79686BFe68386B',
+  licensingAndPayment: '0xf8caa464E5010afEec817634F2C3d867718F6b9f',
+  modelAndIndexAudit: '0x93F5cd2549c47076D628Ba6a52A062E262f5cfaf',
 };

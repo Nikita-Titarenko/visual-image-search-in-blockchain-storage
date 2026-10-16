@@ -19,15 +19,30 @@ def require_env(name: str) -> str:
         raise RuntimeError(f"{name} is required.")
     return value
 
-STATE_DIR = SERVICE_DIR / "state"
-MANIFEST_PATH = STATE_DIR / "dataset_manifest.json"
-INDEX_PATH = STATE_DIR / "feature_index.npz"
-DEV_INDEX_PATH = STATE_DIR / "development_feature_index.npz"
-DEV_PLOTS_DIR = STATE_DIR / "development_plots"
-FINETUNED_MODEL_PATH = STATE_DIR / "fine_tuned_resnet18_backbone.pt"
-AUDIT_METADATA_PATH = STATE_DIR / "audit_metadata.json"
-LOG_PATH = STATE_DIR / "image-vector-service.log"
-DEV_EVALUATION_PATH = STATE_DIR / "development_evaluation.json"
+
+def optional_path_env(name: str, default: Path) -> Path:
+    value = os.getenv(name, "").strip()
+    return Path(value).expanduser() if value else default
+
+
+def optional_bool_env(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized not in {"true", "false"}:
+        raise RuntimeError(f"{name} must be either 'true' or 'false'.")
+    return normalized == "true"
+
+STATE_DIR = optional_path_env("VECTOR_STATE_DIR", SERVICE_DIR / "state")
+MANIFEST_PATH = optional_path_env("VECTOR_MANIFEST_PATH", STATE_DIR / "dataset_manifest.json")
+INDEX_PATH = optional_path_env("VECTOR_INDEX_PATH", STATE_DIR / "feature_index.npz")
+DEV_INDEX_PATH = optional_path_env("VECTOR_DEV_INDEX_PATH", STATE_DIR / "development_feature_index.npz")
+DEV_PLOTS_DIR = optional_path_env("VECTOR_DEV_PLOTS_DIR", STATE_DIR / "development_plots")
+FINETUNED_MODEL_PATH = optional_path_env("VECTOR_FINETUNED_MODEL_PATH", STATE_DIR / "fine_tuned_resnet18_backbone.pt")
+AUDIT_METADATA_PATH = optional_path_env("VECTOR_AUDIT_METADATA_PATH", STATE_DIR / "audit_metadata.json")
+LOG_PATH = optional_path_env("VECTOR_LOG_PATH", STATE_DIR / "image-vector-service.log")
+DEV_EVALUATION_PATH = optional_path_env("VECTOR_DEV_EVALUATION_PATH", STATE_DIR / "development_evaluation.json")
 ARTIFACTS_DIR = SMART_CONTRACTS_DIR / "artifacts" / "contracts"
 PINATA_GATEWAY_BASE_URL = require_env("PINATA_GATEWAY_BASE_URL")
 VECTOR_ALLOWED_ORIGINS = [origin.strip() for origin in require_env("VECTOR_ALLOWED_ORIGINS").split(",") if origin.strip()]
@@ -41,6 +56,18 @@ VECTOR_MODEL_VERSION = require_env("VECTOR_MODEL_VERSION")
 VECTOR_INDEX_VERSION = require_env("VECTOR_INDEX_VERSION")
 VECTOR_TEST_DATASET_ID = require_env("VECTOR_TEST_DATASET_ID")
 VECTOR_RUNTIME_MODE = require_env("VECTOR_RUNTIME_MODE").lower()
+_vector_sync_with_blockchain = os.getenv("VECTOR_SYNC_WITH_BLOCKCHAIN")
+if _vector_sync_with_blockchain is None:
+    VECTOR_SYNC_WITH_BLOCKCHAIN = True
+else:
+    _vector_sync_with_blockchain = _vector_sync_with_blockchain.strip().lower()
+    if _vector_sync_with_blockchain not in {"true", "false"}:
+        raise RuntimeError("VECTOR_SYNC_WITH_BLOCKCHAIN must be either 'true' or 'false'.")
+    VECTOR_SYNC_WITH_BLOCKCHAIN = _vector_sync_with_blockchain == "true"
+VECTOR_USE_CENTRALIZED_BACKEND = optional_bool_env("VECTOR_USE_CENTRALIZED_BACKEND", False)
+CONTRACTS_MOCK_BASE_URL = os.getenv("CONTRACTS_MOCK_BASE_URL", "").strip().rstrip("/")
+CONTRACTS_MOCK_POLL_INTERVAL_SECONDS = float(os.getenv("CONTRACTS_MOCK_POLL_INTERVAL_SECONDS", "1.0").strip() or "1.0")
+VECTOR_AUDIT_SUBMITTER = os.getenv("VECTOR_AUDIT_SUBMITTER", "centralized-audit").strip() or "centralized-audit"
 VECTOR_RANDOM_SEED = int(require_env("VECTOR_RANDOM_SEED"))
 VECTOR_TRAIN_RATIO = float(require_env("VECTOR_TRAIN_RATIO"))
 VECTOR_VAL_RATIO = float(require_env("VECTOR_VAL_RATIO"))

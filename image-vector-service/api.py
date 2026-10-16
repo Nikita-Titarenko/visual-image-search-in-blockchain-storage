@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, AsyncIterator
 from fastapi import FastAPI, File, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import VECTOR_ALLOWED_ORIGINS, VECTOR_TOP_K_DEFAULT
+from config import VECTOR_ALLOWED_ORIGINS, VECTOR_SYNC_WITH_BLOCKCHAIN, VECTOR_TOP_K_DEFAULT, VECTOR_USE_CENTRALIZED_BACKEND
 from logger import get_logger
 from models import SearchResponse
 
@@ -35,7 +35,7 @@ def create_app(
         if service is None:
             from service import ImageVectorService
 
-            service = ImageVectorService()
+            service = ImageVectorService(use_centralized_backend=VECTOR_USE_CENTRALIZED_BACKEND)
         current_service = service
         return current_service
 
@@ -45,7 +45,8 @@ def create_app(
         sync_task: asyncio.Task[None] | None = None
         try:
             runtime_service = get_service()
-            await runtime_service.initialize()
+            include_registered_images = VECTOR_SYNC_WITH_BLOCKCHAIN or VECTOR_USE_CENTRALIZED_BACKEND
+            await runtime_service.initialize(include_registered_images=include_registered_images)
             sync_task = asyncio.create_task(runtime_service.listen_for_registered_images())
             logger.info("FastAPI lifespan startup completed")
             yield

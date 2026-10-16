@@ -14,15 +14,14 @@ from pydantic import BaseModel
 ROOT_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT_DIR / ".env")
 
-PINATA_UPLOAD_URL = "https://api.pinata.cloud/pinning/pinFileToIPFS"
-PINATA_PIN_JSON_URL = "https://api.pinata.cloud/pinning/pinJSONToIPFS"
+PINATA_API_BASE_URL = os.getenv("PINATA_API_BASE_URL", "https://api.pinata.cloud").rstrip("/")
+PINATA_UPLOAD_URL = f"{PINATA_API_BASE_URL}/pinning/pinFileToIPFS"
+PINATA_PIN_JSON_URL = f"{PINATA_API_BASE_URL}/pinning/pinJSONToIPFS"
+PINATA_UNPIN_URL = f"{PINATA_API_BASE_URL}/pinning/unpin"
 PINATA_GATEWAY_BASE_URL = os.getenv("PINATA_GATEWAY_BASE_URL", "https://gateway.pinata.cloud/ipfs")
 PINATA_UPLOAD_PORT = int(os.getenv("PINATA_UPLOAD_PORT", "3001"))
 PINATA_JWT = os.getenv("PINATA_JWT", "").strip()
 ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("PINATA_PROXY_ALLOWED_ORIGINS", "http://localhost:4200").split(",") if origin.strip()]
-
-if not PINATA_JWT:
-    raise RuntimeError("PINATA_JWT is required to run the Pinata upload proxy.")
 
 
 class PinJsonRequest(BaseModel):
@@ -51,6 +50,15 @@ def _build_pinata_payload(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _pinata_headers(content_type: str | None = None) -> dict[str, str]:
+    headers: dict[str, str] = {}
+    if PINATA_JWT:
+        headers["Authorization"] = f"Bearer {PINATA_JWT}"
+    if content_type:
+        headers["Content-Type"] = content_type
+    return headers
+
+
 @app.get("/api/pinata/health")
 def health() -> dict[str, bool]:
     return {"ok": True}
@@ -74,7 +82,7 @@ async def upload(file: UploadFile = File(...)) -> dict[str, Any]:
         response = await client.post(
             PINATA_UPLOAD_URL,
             files=files,
-            headers={"Authorization": f"Bearer {PINATA_JWT}"},
+            headers=_pinata_headers(),
         )
 
     if response.status_code >= 400:
@@ -98,16 +106,31 @@ async def pin_json(request: PinJsonRequest) -> dict[str, Any]:
                 "pinataMetadata": {"name": request.name},
                 "pinataContent": request.content,
             },
-            headers={
-                "Authorization": f"Bearer {PINATA_JWT}",
-                "Content-Type": "application/json",
-            },
+            headers=_pinata_headers("application/json"),
         )
 
     if response.status_code >= 400:
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
     return _build_pinata_payload(response.json())
+
+
+@app.delete("/api/pinata/unpin/{ipfs_hash}")
+async def unpin(ipfs_hash: str) -> dict[str, Any]:
+    normalized_hash = ipfs_hash.strip()
+    if not normalized_hash:
+        raise HTTPException(status_code=400, detail="An IPFS hash is required.")
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        response = await client.delete(
+            f"{PINATA_UNPIN_URL}/{normalized_hash}",
+            headers=_pinata_headers(),
+        )
+
+    if response.status_code >= 400:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
+
+    return {"ok": True, "ipfsHash": normalized_hash}
 
 
 if __name__ == "__main__":

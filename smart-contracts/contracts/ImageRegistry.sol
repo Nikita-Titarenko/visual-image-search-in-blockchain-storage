@@ -18,7 +18,6 @@ contract ImageRegistry {
 
     struct Collection {
         address creator;
-        string name;
         string metadataURI;
         uint64 createdAt;
     }
@@ -35,7 +34,6 @@ contract ImageRegistry {
     struct CollectionView {
         uint256 id;
         address creator;
-        string name;
         string metadataURI;
         uint64 createdAt;
     }
@@ -48,7 +46,7 @@ contract ImageRegistry {
     mapping(uint256 => uint256[]) private _collectionImages;
     mapping(bytes32 => uint256) private _imageIdByHash;
 
-    event CollectionRegistered(uint256 indexed collectionId, address indexed creator, string name);
+    event CollectionRegistered(uint256 indexed collectionId, address indexed creator);
     event ImageRegistered(
         uint256 indexed imageId,
         uint256 indexed collectionId,
@@ -58,20 +56,18 @@ contract ImageRegistry {
     );
 
     /// @notice Registers a new collection for the caller.
-    /// @param name The human-readable collection name.
     /// @param metadataURI The metadata URI describing the collection.
     /// @return collectionId The newly assigned collection identifier.
-    function registerCollection(string calldata name, string calldata metadataURI) external returns (uint256 collectionId) {
+    function registerCollection(string calldata metadataURI) external returns (uint256 collectionId) {
         collectionId = _nextCollectionId++;
 
         _collections[collectionId] = Collection({
             creator: msg.sender,
-            name: name,
             metadataURI: metadataURI,
             createdAt: uint64(block.timestamp)
         });
 
-        emit CollectionRegistered(collectionId, msg.sender, name);
+        emit CollectionRegistered(collectionId, msg.sender);
     }
 
     /// @notice Registers a single image and binds it to the caller.
@@ -205,7 +201,6 @@ contract ImageRegistry {
         return CollectionView({
             id: collectionId,
             creator: collection.creator,
-            name: collection.name,
             metadataURI: collection.metadataURI,
             createdAt: collection.createdAt
         });

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 import httpx
@@ -11,6 +12,7 @@ from logger import get_logger
 
 
 logger = get_logger()
+PINATA_API_BASE_URL = os.getenv("PINATA_API_BASE_URL", "https://api.pinata.cloud").rstrip("/")
 
 
 def to_gateway_url(uri_or_url: str) -> str:
@@ -25,10 +27,10 @@ async def pin_file_to_ipfs(file_name: str, content: bytes, content_type: str, pi
         "file": (file_name, content, content_type),
         "pinataMetadata": (None, json.dumps({"name": file_name}), "application/json"),
     }
-    headers = {"Authorization": f"Bearer {pinata_jwt}"}
+    headers = {"Authorization": f"Bearer {pinata_jwt}"} if pinata_jwt else {}
 
     async with httpx.AsyncClient(timeout=120) as client:
-        response = await client.post("https://api.pinata.cloud/pinning/pinFileToIPFS", files=files, headers=headers)
+        response = await client.post(f"{PINATA_API_BASE_URL}/pinning/pinFileToIPFS", files=files, headers=headers)
 
     if response.status_code >= 400:
         logger.error("Pinata upload failed: file=%s status=%s body=%s", file_name, response.status_code, response.text)
@@ -48,14 +50,13 @@ async def pin_file_to_ipfs(file_name: str, content: bytes, content_type: str, pi
 
 async def pin_json_to_ipfs(name: str, content: dict[str, Any], pinata_jwt: str) -> dict[str, Any]:
     logger.info("Pinata JSON upload started: name=%s", name)
-    headers = {
-        "Authorization": f"Bearer {pinata_jwt}",
-        "Content-Type": "application/json",
-    }
+    headers = {"Content-Type": "application/json"}
+    if pinata_jwt:
+        headers["Authorization"] = f"Bearer {pinata_jwt}"
 
     async with httpx.AsyncClient(timeout=120) as client:
         response = await client.post(
-            "https://api.pinata.cloud/pinning/pinJSONToIPFS",
+            f"{PINATA_API_BASE_URL}/pinning/pinJSONToIPFS",
             json={
                 "pinataMetadata": {"name": name},
                 "pinataContent": content,

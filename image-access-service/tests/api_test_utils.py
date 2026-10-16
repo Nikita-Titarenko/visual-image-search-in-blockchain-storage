@@ -17,5 +17,11 @@ def load_oracle_api_module():
     return importlib.import_module("api")
 
 
+def load_oracle_service_module():
+    if str(SERVICE_DIR) not in sys.path:
+        sys.path.insert(0, str(SERVICE_DIR))
+    return importlib.import_module("service")
+
+
 def load_openapi_spec() -> dict[str, object]:
     return json.loads((OPENAPI_DIR / "oracle.openapi.json").read_text(encoding="utf-8"))

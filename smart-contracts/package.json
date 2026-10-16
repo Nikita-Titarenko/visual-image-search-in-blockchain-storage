@@ -14,6 +14,13 @@
     "clean": "hardhat clean",
     "deploy:amoy": "hardhat run scripts/deploy.js --network amoy",
     "deploy:polygon": "hardhat run scripts/deploy.js --network polygon",
+    "measure:register-collection-confirmation": "hardhat run scripts/measure-register-collection-confirmation.js",
+    "measure:register-collection-gas-by-record-count": "hardhat run scripts/measure-register-collection-gas-by-record-count.js",
+    "benchmark:local-system-test": "node scripts/benchmark-local-system-test.js",
+    "benchmark:centralized-system-test": "node scripts/benchmark-centralized-system-test.js",
+    "plot:register-collection-confirmation": "python scripts/plot_register_collection_confirmation_histogram.py",
+    "plot:register-collection-gas-by-record-count": "python scripts/plot_register_collection_gas_by_record_count.py",
+    "plot:local-system-benchmark": "python scripts/plot_local_system_benchmark.py",
     "amoy:create-license-setup": "hardhat run scripts/amoy-create-license-setup.js --network amoy",
     "amoy:buy-license": "hardhat run scripts/amoy-buy-license.js --network amoy"
   },

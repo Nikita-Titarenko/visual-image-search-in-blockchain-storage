@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
 
+import { mapServiceFetchError, parseServiceError } from './api-error.utils';
+
 export interface ImageSearchResult {
   rank: number;
   score: number;
@@ -30,19 +32,28 @@ export class ImageVectorSearchService {
     const formData = new FormData();
     formData.append('file', file, file.name);
 
-    const response = await fetch(
-      `${VECTOR_SERVICE_BASE_URL}/api/vector/search?top_k=${encodeURIComponent(topK)}`,
-      {
-        method: 'POST',
-        body: formData,
-      },
-    );
+    try {
+      const response = await fetch(
+        `${VECTOR_SERVICE_BASE_URL}/api/vector/search?top_k=${encodeURIComponent(topK)}`,
+        {
+          method: 'POST',
+          body: formData,
+        },
+      );
 
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { detail?: string; error?: string } | null;
-      throw new Error(payload?.detail || payload?.error || 'Image vector search failed.');
+      if (!response.ok) {
+        throw await parseServiceError(
+          response,
+          'ML service returned an error while processing the similarity search request.',
+        );
+      }
+
+      return (await response.json()) as ImageSearchResponse;
+    } catch (error) {
+      throw mapServiceFetchError(
+        error,
+        'ML service is unavailable. Start image-vector-service and try the similarity search again.',
+      );
     }
-
-    return (await response.json()) as ImageSearchResponse;
   }
 }
